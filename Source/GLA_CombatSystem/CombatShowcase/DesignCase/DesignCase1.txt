@@ -1,0 +1,13 @@
+Case Study 01 — From a Fake Block to Two Real Playstyles
+
+Problem. The original defensive mechanic was a single-button animation: press once, play a fixed montage that disabled player input for its duration, and any hit landing during that window was negated. It looked like blocking but behaved like a scripted invincibility frame — no hold, no stance, no player agency once triggered, and no room for a timing-based mechanic on top of it.
+
+Constraint. The animation set and input scheme were fixed, and combat had to stay readable at speed with multiple enemies on screen.
+
+Decision. Rebuilt it as two layers serving two playstyles rather than one mechanic with a bonus attached. The base layer is a genuine held stance: the player holds the input and stays in block for as long as they hold it, spending stamina per hit absorbed. That's the defensive path — safe, resource-costly, and rewarded when the enemy's guard eventually opens and the player gets a clean opening to attack.
+
+The parry sits on top as a distinct, riskier path rather than a strict upgrade. A visual indicator on the enemy's attack tells the player when to time the parry, but the window isn't placed at the very start of the animation — it's offset, so the player has to anticipate the hit rather than just react to an already-obvious tell. Landing it triggers a heavy counterattack and a window to reposition or open a combo. Missing it means eating a full enemy combo's worth of stamina drain, since the player committed to the parry instead of holding a safe block.
+
+Why two paths instead of one mechanic. An aggressive player who only ever blocks defensively never gets punished for playing safe, but they also never get the payoff moment. A player chasing parries takes on real risk — a whiffed parry costs far more stamina than a held block would have. Structuring it this way meant neither playstyle makes the other one redundant: block-and-wait is always viable, parry-for-reward is always available, and the choice between them is a genuine tactical decision rather than a strictly-better option.
+
+Outcome. The defensive layer went from a scripted animation with no player agency to two distinct, economically balanced paths through the same encounter. The broader lesson: when a mechanic "looks like" a genre standard but is implemented as something else — here, a canned invulnerability animation standing in for blocking — players read the mismatch immediately, even before balance is touched. And once the base mechanic is honest, a higher-risk variant can sit on top of it as a real choice rather than as the only correct way to play.

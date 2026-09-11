@@ -1,0 +1,60 @@
+# ---- IDE / Editor user files ----
+.vs/
+.vsconfig
+.idea/
+*.sln.DotSettings.user
+
+# ---- Regenerable IDE project files — also avoids baking in this
+# machine's non-standard engine path into committed .sln files ----
+*.sln
+*.slnx
+Automation_*
+
+# ---- Compiled / intermediate engine artifacts ----
+Binaries/*
+Plugins/**/Binaries/*
+Plugins/**/Intermediate/*
+Intermediate/*
+Saved/*
+DerivedDataCache/*
+Build/*
+!Build/*/
+Build/*/**
+!Build/*/PakBlacklist*.txt
+!Build/**/*.ico
+*_BuiltData.uasset
+
+# ---- Per-user editor session state, not shared project settings ----
+Config/DefaultEditorPerProjectUserSettings.ini
+
+# ---- OS cruft ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =====================================================================
+# CONTENT — whitelist, not blacklist. Everything under Content/ is
+# ignored by default; only folders holding hand-authored logic and
+# permissively-licensed assets are explicitly allowed back in.
+# =====================================================================
+Content/**
+!Content/**/
+
+# Where the project's logic actually lives
+!Content/CombatDemoShowcase/**
+
+# Content Browser saved search filters — small metadata only
+!Content/Collections/**
+
+# Default Third Person Mannequin, used by both player and enemies —
+# Epic's own template content, freely redistributable
+!Content/Characters/**
+
+# Everything else stays ignored by the blanket rule above, no
+# individual entries needed:
+#   Developers/           — UE per-user scratch folder
+#   LevelPrototyping/      — unused template default level
+#   ARPG_Unarmed/           — paid Fab pack, redistribution not permitted
+#   CombatMasterBundle/     — paid Fab pack, redistribution not permitted
+#   _ExternalActors_/       — removed, orphaned World Partition data
+#   _ExternalObjects_/      — removed, orphaned World Partition data
