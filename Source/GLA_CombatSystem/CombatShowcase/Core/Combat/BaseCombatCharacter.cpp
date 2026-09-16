@@ -3,8 +3,10 @@
 
 #include "BaseCombatCharacter.h"
 #include "CombatShowcase/Core/GAS/CombatAttributeSet.h"
+#include "Components/CombatFeedbackComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-
+#include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 ABaseCombatCharacter::ABaseCombatCharacter()
@@ -23,6 +25,8 @@ ABaseCombatCharacter::ABaseCombatCharacter()
 	AbilitySystemComponent->SetIsReplicated(true); 
 
 	AttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("AttributeSet"));
+	
+	FeedbackComponent = CreateDefaultSubobject<UCombatFeedbackComponent>(TEXT("FeedbackComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -38,6 +42,10 @@ void ABaseCombatCharacter::PossessedBy(AController* NewController)
     AbilitySystemComponent->InitAbilityActorInfo(this, this); // must happen before anything else touches the ASC
     InitializeAttributes();
     GrantStartingAbilities();
+	if (AttributeSet)
+	{
+		AttributeSet->OnHealthChanged.AddDynamic(this, &ABaseCombatCharacter::HandleHealthChanged);
+	}
 }
 
 void ABaseCombatCharacter::FaceDirection(float SignedDirection)
@@ -86,3 +94,37 @@ void ABaseCombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
+void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmount, bool bIsDead)
+{
+	if (bIsDead)
+	{
+		TriggerDeath();
+		return;
+	}
+	if (DamageAmount > 0.f)
+	{
+		FGameplayEventData EventData;
+		EventData.EventTag = CombatTags::Event_Combat_HitReact;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, CombatTags::Event_Combat_HitReact, EventData);
+	}
+}
+
+void ABaseCombatCharacter::TriggerDeath()
+{
+	GetCharacterMovement()->DisableMovement();
+	
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	MeshComp->SetCollisionProfileName(TEXT("Ragdoll"));
+	MeshComp->SetSimulatePhysics(true);
+	MeshComp->WakeAllRigidBodies();
+	
+	const FVector DeathImpulse = GetFeedbackComponent()->GetLastKnockbackVelocity() * DeathImpulseScale;
+	MeshComp->AddImpulse(DeathImpulse, NAME_None, false);
+	
+	if (!IsPlayerControlled())
+	{
+		GetFeedbackComponent()->TriggerDeathSlowMo();
+	}
+}

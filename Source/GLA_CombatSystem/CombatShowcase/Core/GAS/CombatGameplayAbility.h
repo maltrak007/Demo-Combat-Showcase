@@ -20,4 +20,6 @@ public:
 		InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 		NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 	}
+	
+	bool HasValidAnimInstance(const FGameplayAbilityActorInfo* ActorInfo) const;
 };

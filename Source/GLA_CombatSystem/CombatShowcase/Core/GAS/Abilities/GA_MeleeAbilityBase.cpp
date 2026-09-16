@@ -2,6 +2,7 @@
 
 #include "GA_MeleeAbilityBase.h"
 
+#include "AbilitySystemInterface.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "CombatShowcase/Core/Combat/Data/CombatData.h"
 #include "CombatShowcase/Core/GAS/AbilityTasks/AbilityTask_MultiBoneHitTrace.h"
@@ -9,6 +10,12 @@
 
 void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+	if (!HasValidAnimInstance(ActorInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
 	if (!StrikeDataTable || !ComboRowNames.IsValidIndex(CurrentComboIndex))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -29,7 +36,7 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	MontageTask->OnCancelled.AddDynamic(this, &UGA_MeleeAbilityBase::HandleMontageInterrupted);
 	MontageTask->ReadyForActivation();
 
-	UAbilityTask_MultiBoneHitTrace* HitboxTask = UAbilityTask_MultiBoneHitTrace::CreateMultiBoneHitTrace(this, Row->Hitboxes, DamageEffectClass, Row->Damage);
+	UAbilityTask_MultiBoneHitTrace* HitboxTask = UAbilityTask_MultiBoneHitTrace::CreateMultiBoneHitTrace(this, Row->Hitboxes, DamageEffectClass, Row->Damage, Row->ImpactFeel);
 	HitboxTask->OnMultiHitDetected.AddDynamic(this, &UGA_MeleeAbilityBase::HandleHitDetected);
 	HitboxTask->ReadyForActivation();
 
@@ -38,7 +45,9 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 
 void UGA_MeleeAbilityBase::HandleHitDetected(AActor* HitActor)
 {
-	// Hitstop/camera-shake hook point for Phase 2 — nothing to do yet
+	// Reserved for ability-level reactions later (combo counters, etc.).
+	// Hitstop/knockback/camera shake are already fully handled inside the
+	// AbilityTask via FeedbackComponent — nothing belongs here for those.
 }
 
 void UGA_MeleeAbilityBase::HandleMontageCompleted()

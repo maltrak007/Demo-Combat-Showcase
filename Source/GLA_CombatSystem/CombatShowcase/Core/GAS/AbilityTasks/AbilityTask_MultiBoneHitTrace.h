@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/Tasks/AbilityTask.h"
+#include "CombatShowcase/Core/Combat/Data/CombatData.h"
 #include "AbilityTask_MultiBoneHitTrace.generated.h"
 
+struct FCombatImpactFeel;
 struct FCombatHitboxDef;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiBoneHitTraceDelegate, AActor*, HitActor);
 /**
@@ -20,7 +22,7 @@ public:
 	FMultiBoneHitTraceDelegate OnMultiHitDetected;
 
 	UFUNCTION(BlueprintCallable, meta = (HidePin = "OwningAbility", DefaultToSelf = "OwningAbility", BlueprintInternalUseOnly = "true"))
-	static UAbilityTask_MultiBoneHitTrace* CreateMultiBoneHitTrace(UGameplayAbility* OwningAbility, const TArray<FCombatHitboxDef>& InHitboxes, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmount);
+	static UAbilityTask_MultiBoneHitTrace* CreateMultiBoneHitTrace(UGameplayAbility* OwningAbility, const TArray<FCombatHitboxDef>& InHitboxes, TSubclassOf<UGameplayEffect> DamageEffectClass, float DamageAmount, FCombatImpactFeel ImpactFeel);
 
 	virtual void Activate() override;
 	virtual void TickTask(float DeltaTime) override;
@@ -31,6 +33,7 @@ protected:
 	TSubclassOf<UGameplayEffect> EffectClass;
 	float Damage = 10.f;
 	bool bWindowOpen = false;
+	FCombatImpactFeel ImpactFeel;
 
 	TMap<FName, FVector> LastBonePositions;
 	TMap<uint16, TSet<TWeakObjectPtr<AActor>>> HitGroupsConsumed;

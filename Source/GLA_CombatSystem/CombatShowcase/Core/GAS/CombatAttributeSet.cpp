@@ -32,7 +32,9 @@ void UCombatAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 	Super::PostGameplayEffectExecute(Data);
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
+		const float DamageDone = FMath::Max(0.f, -Data.EvaluatedData.Magnitude); // Add op with negative magnitude — this recovers the positive damage value
 		SetHealth(FMath::Clamp(GetHealth(), 0.f, GetMaxHealth()));
+		OnHealthChanged.Broadcast(GetHealth(), DamageDone, GetHealth() <= 0.f);
 	}
 	if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
 	{

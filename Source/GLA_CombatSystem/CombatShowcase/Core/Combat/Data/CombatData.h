@@ -22,12 +22,32 @@ struct FCombatHitboxDef
 };
 
 USTRUCT(BlueprintType)
+struct FCombatImpactFeel
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) float HitstopDuration = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) float KnockbackMagnitude = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSubclassOf<UCameraShakeBase> ImpactShake;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) float ShakeScale = 1.f;
+};
+
+USTRUCT(BlueprintType)
 struct FCombatStrikeRow : public FTableRowBase
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, Category = "Strike") UAnimMontage* Montage = nullptr;
 	UPROPERTY(EditAnywhere, Category = "Strike") TArray<FCombatHitboxDef> Hitboxes;
 	UPROPERTY(EditAnywhere, Category = "Strike") float Damage = 10.f;
-	UPROPERTY(EditAnywhere, Category = "Strike|Feel (Phase 2)") float HitstopDuration = 0.f;
-	UPROPERTY(EditAnywhere, Category = "Strike|Feel (Phase 2)") float KnockbackMagnitude = 0.f;
+	UPROPERTY(EditAnywhere, Category = "Strike|Feel") FCombatImpactFeel ImpactFeel;
+};
+
+USTRUCT(BlueprintType)
+struct FCombatImpactEvent
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly) AActor* Target = nullptr;
+	UPROPERTY(BlueprintReadOnly) AActor* Instigator = nullptr;
+	UPROPERTY(BlueprintReadOnly) FVector KnockbackVelocity = FVector::ZeroVector;
+	UPROPERTY(BlueprintReadOnly) FVector ImpactPoint = FVector::ZeroVector;
+	UPROPERTY(BlueprintReadOnly) FCombatImpactFeel ImpactFeel;
 };

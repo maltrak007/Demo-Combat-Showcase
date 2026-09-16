@@ -22,7 +22,9 @@ public class GLA_CombatSystem : ModuleRules
 			"GameplayAbilities",
 			"GameplayTags",
 			"GameplayTasks",
-			"MotionWarping"
+			"MotionWarping",
+			"GameplayCameras",
+			"StateTreeModule"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

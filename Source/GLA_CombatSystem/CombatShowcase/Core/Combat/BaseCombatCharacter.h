@@ -7,6 +7,7 @@
 #include "GameFramework/Character.h"
 #include "BaseCombatCharacter.generated.h"
 
+class UCombatFeedbackComponent;
 class UGameplayEffect;
 class UGameplayAbility;
 class UCombatAttributeSet;
@@ -33,6 +34,8 @@ public:
 	
 	void SetEquippedWeaponMesh(UStaticMeshComponent* NewWeaponMesh) { EquippedWeaponMesh = NewWeaponMesh; }
 	
+	UCombatFeedbackComponent* GetFeedbackComponent() const { return FeedbackComponent; }
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -54,9 +57,21 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	UStaticMeshComponent* EquippedWeaponMesh = nullptr;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	UCombatFeedbackComponent* FeedbackComponent;
+	
+
 	virtual void PossessedBy(AController* NewController) override;
 	
 	void FaceDirection(float SignedDirection);
+	
+	UFUNCTION() 
+	void HandleHealthChanged(float NewHealth, float DamageAmount, bool bIsDead);
+	
+	void TriggerDeath();
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Combat") 
+	float DeathImpulseScale = 8.f;
 	
 private:
 	void InitializeAttributes();
