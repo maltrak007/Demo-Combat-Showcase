@@ -7,6 +7,8 @@
 #include "CombatShowcase/Core/Combat/BaseCombatCharacter.h"
 #include "PlayerCombatCharacter.generated.h"
 
+class UCombatStatsComponent;
+
 UCLASS()
 class GLA_COMBATSYSTEM_API APlayerCombatCharacter : public ABaseCombatCharacter
 {
@@ -30,10 +32,12 @@ public:
 	void Finisher();
 	void Roll();
 	void SendCombatEvent(const FGameplayTag& EventTag);
+	
+	void TryAttack(const FGameplayTag& AttackEventTag);
+	void TryConsumeComboRequest();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-
+	
 };

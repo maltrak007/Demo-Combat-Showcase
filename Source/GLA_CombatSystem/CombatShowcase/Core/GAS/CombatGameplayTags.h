@@ -21,5 +21,14 @@ namespace CombatTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_HitboxOpen);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_HitboxClose);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_HitReact);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_BlockWindowOpen);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_BlockWindowClose);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_ComboWindowOpen);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_ComboWindowClose);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Type_Attack);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Type_Block);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Type_Evasion);
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Damage);
 }

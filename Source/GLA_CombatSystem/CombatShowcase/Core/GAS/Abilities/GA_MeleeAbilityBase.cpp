@@ -2,11 +2,21 @@
 
 #include "GA_MeleeAbilityBase.h"
 
-#include "AbilitySystemInterface.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "CombatShowcase/Core/Combat/Characters/Player/PlayerCombatCharacter.h"
+#include "CombatShowcase/Core/Combat/Components/CombatStatsComponent.h"
 #include "CombatShowcase/Core/Combat/Data/CombatData.h"
+#include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "CombatShowcase/Core/GAS/AbilityTasks/AbilityTask_MultiBoneHitTrace.h"
 
+
+UGA_MeleeAbilityBase::UGA_MeleeAbilityBase()
+{
+	AbilityTags.AddTag(CombatTags::Ability_Type_Attack);
+	ActivationOwnedTags.AddTag(CombatTags::Ability_Type_Attack);
+}
 
 void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
@@ -16,13 +26,16 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return;
 	}
 	
-	if (!StrikeDataTable || !ComboRowNames.IsValidIndex(CurrentComboIndex))
+	APlayerCombatCharacter* Avatar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo());
+	const int32 Index = Avatar ? Avatar->GetCombatStatsComponent()->GetComboIndex() : 0;
+	
+	if (!StrikeDataTable || !ComboRowNames.IsValidIndex(Index))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	FCombatStrikeRow* Row = StrikeDataTable->FindRow<FCombatStrikeRow>(ComboRowNames[CurrentComboIndex], TEXT("GA_MeleeAbilityBase"));
+	FCombatStrikeRow* Row = StrikeDataTable->FindRow<FCombatStrikeRow>(ComboRowNames[Index], TEXT("GA_MeleeAbilityBase"));
 	
 	if (!Row || !CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -39,21 +52,26 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	UAbilityTask_MultiBoneHitTrace* HitboxTask = UAbilityTask_MultiBoneHitTrace::CreateMultiBoneHitTrace(this, Row->Hitboxes, DamageEffectClass, Row->Damage, Row->ImpactFeel);
 	HitboxTask->OnMultiHitDetected.AddDynamic(this, &UGA_MeleeAbilityBase::HandleHitDetected);
 	HitboxTask->ReadyForActivation();
-
-	CurrentComboIndex = 0; // placeholder — Phase 3/4 territory
 }
 
 void UGA_MeleeAbilityBase::HandleHitDetected(AActor* HitActor)
 {
 	// Reserved for ability-level reactions later (combo counters, etc.).
-	// Hitstop/knockback/camera shake are already fully handled inside the
-	// AbilityTask via FeedbackComponent — nothing belongs here for those.
+	if (APlayerCombatCharacter* AttackerChar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo()))
+	{
+		AttackerChar->GetCombatStatsComponent()->RegisterHitLanded();
+	}
 }
 
 void UGA_MeleeAbilityBase::HandleMontageCompleted()
 {
+	if (APlayerCombatCharacter* PlayerChar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo()))
+	{
+		PlayerChar->GetCombatStatsComponent()->ResetCombo();
+	}
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 }
+
 
 void UGA_MeleeAbilityBase::HandleMontageInterrupted()
 {

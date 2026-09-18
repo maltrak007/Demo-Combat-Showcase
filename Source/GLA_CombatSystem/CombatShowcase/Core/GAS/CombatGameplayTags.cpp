@@ -18,5 +18,14 @@ namespace CombatTags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_HitboxOpen, "Event.Combat.HitboxOpen");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_HitboxClose, "Event.Combat.HitboxClose");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_HitReact, "Event.Combat.HitReact");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_BlockWindowOpen, "Event.Combat.BlockWindowOpen");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_BlockWindowClose, "Event.Combat.BlockWindowClose");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_ComboWindowOpen, "Event.Combat.ComboWindowOpen");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_ComboWindowClose, "Event.Combat.ComboWindowClose");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Attack, "Ability.Type.Attack");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Block, "Ability.Type.Block");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Evasion, "Ability.Type.Evasion");
+	
 	UE_DEFINE_GAMEPLAY_TAG(Data_Damage, "Data.Damage");
 }

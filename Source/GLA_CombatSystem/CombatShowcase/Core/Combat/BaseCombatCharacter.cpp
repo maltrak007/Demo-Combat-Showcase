@@ -7,6 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/CombatStatsComponent.h"
 
 // Sets default values
 ABaseCombatCharacter::ABaseCombatCharacter()
@@ -27,6 +28,12 @@ ABaseCombatCharacter::ABaseCombatCharacter()
 	AttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("AttributeSet"));
 	
 	FeedbackComponent = CreateDefaultSubobject<UCombatFeedbackComponent>(TEXT("FeedbackComponent"));
+	CombatStatsComponent = CreateDefaultSubobject<UCombatStatsComponent>(TEXT("CombatStatsComponent"));
+}
+
+void ABaseCombatCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 }
 
 // Called when the game starts or when spawned
@@ -82,18 +89,6 @@ void ABaseCombatCharacter::GrantStartingAbilities()
 	}
 }
 
-// Called every frame
-void ABaseCombatCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
-// Called to bind functionality to input
-void ABaseCombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-}
-
 void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmount, bool bIsDead)
 {
 	if (bIsDead)
@@ -103,6 +98,13 @@ void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmou
 	}
 	if (DamageAmount > 0.f)
 	{
+		GetCombatStatsComponent()->RegisterDamageTaken();
+		GetCombatStatsComponent()->ResetCombo();
+		
+		FGameplayTagContainer AttackTags;
+		AttackTags.AddTag(CombatTags::Ability_Type_Attack);
+		AbilitySystemComponent->CancelAbilities(&AttackTags);
+		
 		FGameplayEventData EventData;
 		EventData.EventTag = CombatTags::Event_Combat_HitReact;
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, CombatTags::Event_Combat_HitReact, EventData);

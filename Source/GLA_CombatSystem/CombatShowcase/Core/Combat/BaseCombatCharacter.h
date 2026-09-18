@@ -7,6 +7,7 @@
 #include "GameFramework/Character.h"
 #include "BaseCombatCharacter.generated.h"
 
+class UCombatStatsComponent;
 class UCombatFeedbackComponent;
 class UGameplayEffect;
 class UGameplayAbility;
@@ -23,9 +24,6 @@ public:
 	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
 	
@@ -35,6 +33,8 @@ public:
 	void SetEquippedWeaponMesh(UStaticMeshComponent* NewWeaponMesh) { EquippedWeaponMesh = NewWeaponMesh; }
 	
 	UCombatFeedbackComponent* GetFeedbackComponent() const { return FeedbackComponent; }
+	
+	UCombatStatsComponent* GetCombatStatsComponent() const { return CombatStatsComponent; }
 	
 protected:
 	// Called when the game starts or when spawned
@@ -60,6 +60,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	UCombatFeedbackComponent* FeedbackComponent;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UCombatStatsComponent> CombatStatsComponent;
 
 	virtual void PossessedBy(AController* NewController) override;
 	

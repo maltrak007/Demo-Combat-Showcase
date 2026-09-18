@@ -13,16 +13,15 @@ UCLASS()
 class GLA_COMBATSYSTEM_API UGA_MeleeAbilityBase : public UCombatGameplayAbility
 {
 	GENERATED_BODY()
-	
+public:
+	UGA_MeleeAbilityBase();
 protected:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") UDataTable* StrikeDataTable = nullptr;
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") TArray<FName> ComboRowNames;
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") TSubclassOf<UGameplayEffect> DamageEffectClass;
-
-	int32 CurrentComboIndex = 0;
-
+	
 	UFUNCTION() void HandleHitDetected(AActor* HitActor);
 	UFUNCTION() void HandleMontageCompleted();
 	UFUNCTION() void HandleMontageInterrupted();

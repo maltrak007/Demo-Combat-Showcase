@@ -3,8 +3,10 @@
 
 #include "PlayerCombatCharacter.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "GameplayTagContainer.h"
 #include "Abilities/GameplayAbilityTypes.h"
+#include "CombatShowcase/Core/Combat/Components/CombatStatsComponent.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 
 
@@ -13,6 +15,7 @@ APlayerCombatCharacter::APlayerCombatCharacter()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	
 }
 
 // Called when the game starts or when spawned
@@ -43,8 +46,8 @@ void APlayerCombatCharacter::HandleMove(float AxisValue)
 	}
 }
 
-void APlayerCombatCharacter::LightAttack()  { SendCombatEvent(CombatTags::Event_Ability_LightAttack); }
-void APlayerCombatCharacter::HeavyAttack()  { SendCombatEvent(CombatTags::Event_Ability_HeavyAttack); }
+void APlayerCombatCharacter::LightAttack() { TryAttack(CombatTags::Event_Ability_LightAttack); }
+void APlayerCombatCharacter::HeavyAttack() { TryAttack(CombatTags::Event_Ability_HeavyAttack); }
 void APlayerCombatCharacter::StartBlock()   { SendCombatEvent(CombatTags::Event_Ability_Block); }
 void APlayerCombatCharacter::StopBlock()    { /* wire once the Block ability exists — likely CancelAbilitiesByTag */ }
 void APlayerCombatCharacter::Finisher()		{ SendCombatEvent(CombatTags::Event_Ability_Finisher); }
@@ -56,4 +59,35 @@ void APlayerCombatCharacter::SendCombatEvent(const FGameplayTag& EventTag)
 	EventData.EventTag = EventTag;
 	EventData.Instigator = this;
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, EventTag, EventData);
+}
+
+//Attack gated by tag
+void APlayerCombatCharacter::TryAttack(const FGameplayTag& AttackEventTag)
+{
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::Ability_Type_Attack))
+	{
+		SendCombatEvent(AttackEventTag);
+		return;
+	}
+	if (AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::Event_Combat_ComboWindowOpen))
+	{
+		GetCombatStatsComponent()->RequestComboContinuation(AttackEventTag); 
+	}
+}
+
+void APlayerCombatCharacter::TryConsumeComboRequest()
+{
+	const FGameplayTag RequestedTag = GetCombatStatsComponent()->ConsumeComboRequest();
+	if (!RequestedTag.IsValid())
+	{
+		return;
+	}
+
+	GetCombatStatsComponent()->AdvanceCombo();
+
+	FGameplayTagContainer AttackTags;
+	AttackTags.AddTag(CombatTags::Ability_Type_Attack);
+	AbilitySystemComponent->CancelAbilities(&AttackTags); // safe now — the window, and the hitbox before it, have already closed
+
+	SendCombatEvent(RequestedTag);
 }
