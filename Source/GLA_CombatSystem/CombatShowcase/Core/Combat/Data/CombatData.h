@@ -39,6 +39,11 @@ struct FCombatStrikeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Strike") TArray<FCombatHitboxDef> Hitboxes;
 	UPROPERTY(EditAnywhere, Category = "Strike") float Damage = 10.f;
 	UPROPERTY(EditAnywhere, Category = "Strike|Feel") FCombatImpactFeel ImpactFeel;
+	
+	// Tree branching: each row points to its own next row per button.
+	// Empty = this branch has no continuation for that input; the chain ends here.
+	UPROPERTY(EditAnywhere, Category = "Strike|Combo") FName NextRowOnLight;
+	UPROPERTY(EditAnywhere, Category = "Strike|Combo") FName NextRowOnHeavy;
 };
 
 USTRUCT(BlueprintType)

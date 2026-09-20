@@ -78,16 +78,16 @@ void APlayerCombatCharacter::TryAttack(const FGameplayTag& AttackEventTag)
 void APlayerCombatCharacter::TryConsumeComboRequest()
 {
 	const FGameplayTag RequestedTag = GetCombatStatsComponent()->ConsumeComboRequest();
-	if (!RequestedTag.IsValid())
-	{
-		return;
-	}
+	if (!RequestedTag.IsValid()) return; // HandleMontageCompleted resets when the montage naturally ends
 
-	GetCombatStatsComponent()->AdvanceCombo();
+	const bool bHeavyRequested = (RequestedTag == CombatTags::Event_Ability_HeavyAttack);
+	const FName NextRow = GetCombatStatsComponent()->ResolveContinuation(bHeavyRequested);
+	if (NextRow.IsNone()) return; // this branch has no continuation for the button pressed
+
+	GetCombatStatsComponent()->AdvanceCombo(NextRow);
 
 	FGameplayTagContainer AttackTags;
 	AttackTags.AddTag(CombatTags::Ability_Type_Attack);
-	AbilitySystemComponent->CancelAbilities(&AttackTags); // safe now — the window, and the hitbox before it, have already closed
-
+	AbilitySystemComponent->CancelAbilities(&AttackTags);
 	SendCombatEvent(RequestedTag);
 }

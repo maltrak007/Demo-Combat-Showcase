@@ -21,7 +21,6 @@ namespace CombatTags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_BlockWindowOpen, "Event.Combat.BlockWindowOpen");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_BlockWindowClose, "Event.Combat.BlockWindowClose");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_ComboWindowOpen, "Event.Combat.ComboWindowOpen");
-	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_ComboWindowClose, "Event.Combat.ComboWindowClose");
 	
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Attack, "Ability.Type.Attack");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Block, "Ability.Type.Block");

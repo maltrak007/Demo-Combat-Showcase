@@ -24,7 +24,6 @@ namespace CombatTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_BlockWindowOpen);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_BlockWindowClose);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_ComboWindowOpen);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_ComboWindowClose);
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Type_Attack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Type_Block);

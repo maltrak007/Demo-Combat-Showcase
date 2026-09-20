@@ -20,8 +20,8 @@ void ACombatPlayerController::SetupInputComponent()
 	if (auto* EIC = Cast<UEnhancedInputComponent>(InputComponent))
 	{
 		EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ACombatPlayerController::HandleMoveInput);
-		EIC->BindAction(LightAttackAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleLightAttack);
-		EIC->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleHeavyAttack);
+		EIC->BindAction(LightAttackAction, ETriggerEvent::Triggered, this, &ACombatPlayerController::HandleLightAttack);
+		EIC->BindAction(HeavyAttackAction, ETriggerEvent::Triggered, this, &ACombatPlayerController::HandleHeavyAttack);
 		EIC->BindAction(BlockAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleBlockStart);
 		EIC->BindAction(BlockAction, ETriggerEvent::Completed, this, &ACombatPlayerController::HandleBlockStop);
 		EIC->BindAction(RollAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleRoll);

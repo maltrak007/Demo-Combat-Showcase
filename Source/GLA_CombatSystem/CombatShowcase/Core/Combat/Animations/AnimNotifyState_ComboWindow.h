@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
-#include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "AnimNotifyState_ComboWindow.generated.h"
 
 /**
