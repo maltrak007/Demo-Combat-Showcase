@@ -31,7 +31,8 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* BlockAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* RollAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* FinisherAction;
-
+	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* BlockDirectionAction;
+	
 	UPROPERTY()
 	TObjectPtr<APlayerCombatCharacter> ControlledCharacter;
 
@@ -42,4 +43,5 @@ private:
 	void HandleBlockStop(const FInputActionValue& Value);
 	void HandleRoll(const FInputActionValue& Value);
 	void HandleFinisher(const FInputActionValue&);
+	void HandleBlockDirection(const FInputActionValue& Value);
 };

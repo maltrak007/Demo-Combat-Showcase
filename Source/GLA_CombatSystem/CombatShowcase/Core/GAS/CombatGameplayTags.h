@@ -16,6 +16,10 @@ namespace CombatTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Combat_InCombat);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Combat_Attacking);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Combat_Stunned);
+	// Block / Parry Tags
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Blocking_DirectionUp);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Blocking_DirectionDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Combat_ParryWindowOpen);
 	
 	// Combat events
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_HitboxOpen);
@@ -24,6 +28,7 @@ namespace CombatTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_BlockWindowOpen);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_BlockWindowClose);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_ComboWindowOpen);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Combat_BlockDirectionChanged);
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Type_Attack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Type_Block);

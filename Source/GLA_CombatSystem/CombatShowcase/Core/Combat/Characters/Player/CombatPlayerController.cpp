@@ -26,6 +26,7 @@ void ACombatPlayerController::SetupInputComponent()
 		EIC->BindAction(BlockAction, ETriggerEvent::Completed, this, &ACombatPlayerController::HandleBlockStop);
 		EIC->BindAction(RollAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleRoll);
 		EIC->BindAction(FinisherAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleFinisher);
+		EIC->BindAction(BlockDirectionAction, ETriggerEvent::Triggered, this, &ACombatPlayerController::HandleBlockDirection);
 	}
 }
 
@@ -42,3 +43,4 @@ void ACombatPlayerController::HandleBlockStart(const FInputActionValue&)       {
 void ACombatPlayerController::HandleBlockStop(const FInputActionValue&)        { if (ControlledCharacter) ControlledCharacter->StopBlock(); }
 void ACombatPlayerController::HandleRoll(const FInputActionValue&)             { if (ControlledCharacter) ControlledCharacter->Roll(); }
 void ACombatPlayerController::HandleFinisher(const FInputActionValue&)         { if (ControlledCharacter) ControlledCharacter->Finisher(); }
+void ACombatPlayerController::HandleBlockDirection(const FInputActionValue& Value) { if (ControlledCharacter) ControlledCharacter->UpdateBlockDirection(Value.Get<float>()); }

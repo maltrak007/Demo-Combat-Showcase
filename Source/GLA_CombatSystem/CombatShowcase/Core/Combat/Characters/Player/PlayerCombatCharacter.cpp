@@ -15,14 +15,12 @@ APlayerCombatCharacter::APlayerCombatCharacter()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	
 }
 
 // Called when the game starts or when spawned
 void APlayerCombatCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
@@ -48,10 +46,17 @@ void APlayerCombatCharacter::HandleMove(float AxisValue)
 
 void APlayerCombatCharacter::LightAttack() { TryAttack(CombatTags::Event_Ability_LightAttack); }
 void APlayerCombatCharacter::HeavyAttack() { TryAttack(CombatTags::Event_Ability_HeavyAttack); }
-void APlayerCombatCharacter::StartBlock()   { SendCombatEvent(CombatTags::Event_Ability_Block); }
-void APlayerCombatCharacter::StopBlock()    { /* wire once the Block ability exists — likely CancelAbilitiesByTag */ }
-void APlayerCombatCharacter::Finisher()		{ SendCombatEvent(CombatTags::Event_Ability_Finisher); }
-void APlayerCombatCharacter::Roll()         { SendCombatEvent(CombatTags::Event_Ability_Roll); }
+void APlayerCombatCharacter::StartBlock() { SendCombatEvent(CombatTags::Event_Ability_Block); }
+
+void APlayerCombatCharacter::StopBlock()
+{
+	FGameplayTagContainer BlockTags;
+	BlockTags.AddTag(CombatTags::Ability_Type_Block);
+	AbilitySystemComponent->CancelAbilities(&BlockTags);
+}
+
+void APlayerCombatCharacter::Finisher() { SendCombatEvent(CombatTags::Event_Ability_Finisher); }
+void APlayerCombatCharacter::Roll() { SendCombatEvent(CombatTags::Event_Ability_Roll); }
 
 void APlayerCombatCharacter::SendCombatEvent(const FGameplayTag& EventTag)
 {
@@ -71,7 +76,7 @@ void APlayerCombatCharacter::TryAttack(const FGameplayTag& AttackEventTag)
 	}
 	if (AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::Event_Combat_ComboWindowOpen))
 	{
-		GetCombatStatsComponent()->RequestComboContinuation(AttackEventTag); 
+		GetCombatStatsComponent()->RequestComboContinuation(AttackEventTag);
 	}
 }
 
@@ -90,4 +95,22 @@ void APlayerCombatCharacter::TryConsumeComboRequest()
 	AttackTags.AddTag(CombatTags::Ability_Type_Attack);
 	AbilitySystemComponent->CancelAbilities(&AttackTags);
 	SendCombatEvent(RequestedTag);
+}
+
+void APlayerCombatCharacter::UpdateBlockDirection(float AxisValue)
+{
+	LastRawBlockAxisValue = AxisValue;
+
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::Ability_Type_Block)) return;
+
+	const bool bWantsUp = AxisValue >= 0.f;
+	const bool bCurrentlyUp = AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::State_Blocking_DirectionUp);
+	if (bWantsUp == bCurrentlyUp) return;
+
+	FGameplayEventData EventData;
+	EventData.EventTag = CombatTags::Event_Combat_BlockDirectionChanged;
+	EventData.EventMagnitude = bWantsUp ? 1.f : -1.f;
+	EventData.Instigator = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, CombatTags::Event_Combat_BlockDirectionChanged,
+	                                                         EventData);
 }

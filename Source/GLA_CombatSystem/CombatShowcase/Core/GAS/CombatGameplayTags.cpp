@@ -12,7 +12,9 @@ namespace CombatTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_InCombat, "State.Combat.InCombat");
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_Attacking, "State.Combat.Attacking");
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_Stunned, "State.Combat.Stunned");
-	
+	UE_DEFINE_GAMEPLAY_TAG(State_Blocking_DirectionUp, "State.Blocking.DirectionUp");
+	UE_DEFINE_GAMEPLAY_TAG(State_Blocking_DirectionDown, "State.Blocking.DirectionDown");
+	UE_DEFINE_GAMEPLAY_TAG(State_Combat_ParryWindowOpen, "State.Combat.ParryWindowOpen");
 
 	
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_HitboxOpen, "Event.Combat.HitboxOpen");
@@ -21,6 +23,7 @@ namespace CombatTags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_BlockWindowOpen, "Event.Combat.BlockWindowOpen");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_BlockWindowClose, "Event.Combat.BlockWindowClose");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_ComboWindowOpen, "Event.Combat.ComboWindowOpen");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_BlockDirectionChanged, "Event.Combat.BlockDirectionChanged");
 	
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Attack, "Ability.Type.Attack");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Block, "Ability.Type.Block");

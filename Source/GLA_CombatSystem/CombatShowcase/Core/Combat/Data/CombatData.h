@@ -15,7 +15,7 @@ struct FCombatHitboxDef
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere) ECombatHitboxSource Source = ECombatHitboxSource::BareBone;
-	UPROPERTY(EditAnywhere) FName Bone; // skeleton bone name (BareBone) or weapon socket name (WeaponSocket)
+	UPROPERTY(EditAnywhere) FName Bone; 
 	UPROPERTY(EditAnywhere) float Radius = 15.f;
 	UPROPERTY(EditAnywhere) uint8 Rank = 0;
 	UPROPERTY(EditAnywhere) uint8 Group = 0;
