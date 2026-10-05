@@ -31,6 +31,7 @@ public:
 	void StopBlock();
 	void Finisher();
 	void Roll();
+	
 	void SendCombatEvent(const FGameplayTag& EventTag);
 
 	void TryAttack(const FGameplayTag& AttackEventTag);
@@ -45,4 +46,5 @@ protected:
 
 private:
 	float LastRawBlockAxisValue = 0.f;
+	
 };

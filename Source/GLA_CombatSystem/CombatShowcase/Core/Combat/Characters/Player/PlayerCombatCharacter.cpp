@@ -37,11 +37,10 @@ void APlayerCombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 
 void APlayerCombatCharacter::HandleMove(float AxisValue)
 {
-	if (!FMath::IsNearlyZero(AxisValue))
-	{
-		AddMovementInput(FVector::XAxisVector, AxisValue);
-		FaceDirection(AxisValue);
-	}
+	if (IsMovementLocked() || FMath::IsNearlyZero(AxisValue)) return;
+
+	AddMovementInput(FVector::XAxisVector, AxisValue);
+	FaceDirection(AxisValue);
 }
 
 void APlayerCombatCharacter::LightAttack() { TryAttack(CombatTags::Event_Ability_LightAttack); }
@@ -56,7 +55,20 @@ void APlayerCombatCharacter::StopBlock()
 }
 
 void APlayerCombatCharacter::Finisher() { SendCombatEvent(CombatTags::Event_Ability_Finisher); }
-void APlayerCombatCharacter::Roll() { SendCombatEvent(CombatTags::Event_Ability_Roll); }
+
+void APlayerCombatCharacter::Roll()
+{
+	const float MoveX = GetLastMovementInputVector().X;
+	if (FMath::Abs(MoveX) > 0.1f)
+	{
+		FaceDirection(MoveX);
+		SendCombatEvent(CombatTags::Event_Ability_Roll);
+	}
+	else
+	{
+		SendCombatEvent(CombatTags::Event_Ability_BackStep);
+	}
+}
 
 void APlayerCombatCharacter::SendCombatEvent(const FGameplayTag& EventTag)
 {

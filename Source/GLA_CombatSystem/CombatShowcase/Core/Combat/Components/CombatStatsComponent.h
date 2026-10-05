@@ -30,10 +30,6 @@ public:
 	int32 GetComboHitCount() const { return ComboHitCount; }
 	void RegisterHitLanded() { ComboHitCount++; }
 	void RegisterDamageTaken() { ComboHitCount = 0; }
-	
-	// WINDOW TO BLOCK NON-ATTACK INPUTS DURING COMBO ANIMATION 
-	bool IsBlockWindowOpen() const { return bBlockWindowOpen; }
-	void SetBlockWindowOpen(bool bOpen) { bBlockWindowOpen = bOpen; }
 
 private:
 	FName CurrentRow;
@@ -42,6 +38,4 @@ private:
 	FGameplayTag RequestedAttackTag;
 	
 	int32 ComboHitCount = 0;
-	bool bBlockWindowOpen = false;
-	
 };

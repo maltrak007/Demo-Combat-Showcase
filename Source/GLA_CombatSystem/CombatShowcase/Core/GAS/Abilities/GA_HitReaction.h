@@ -3,12 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-#include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayAbility.h"
 #include "GA_HitReaction.generated.h"
 
 
+enum class EHitReactionDirection : uint8;
 /**
  * 
  */
@@ -17,26 +16,24 @@ class GLA_COMBATSYSTEM_API UGA_HitReaction : public UCombatGameplayAbility
 {
 	GENERATED_BODY()
 public:
-	UGA_HitReaction() { FAbilityTriggerData T; T.TriggerTag = CombatTags::Event_Combat_HitReact; T.TriggerSource = EGameplayAbilityTriggerSource::GameplayEvent; AbilityTriggers.Add(T); }
+	UGA_HitReaction();
 protected:
-	UPROPERTY(EditDefaultsOnly) 
-	UAnimMontage* HitReactMontage;
-	
-	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override
-	{
-		if (!HasValidAnimInstance(ActorInfo))
-		{
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-			return;
-		}
-		
-		UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, HitReactMontage);
-		Task->OnCompleted.AddDynamic(this, &UGA_HitReaction::HandleDone);
-		Task->OnInterrupted.AddDynamic(this, &UGA_HitReaction::HandleDone);
-		Task->OnCancelled.AddDynamic(this, &UGA_HitReaction::HandleDone);
-		Task->ReadyForActivation();
-	}
+	UPROPERTY(EditDefaultsOnly, Category = "Reaction|Unblocked") TMap<EHitReactionDirection, UAnimMontage*> UnblockedReactions;
+	UPROPERTY(EditDefaultsOnly, Category = "Reaction|Blocked") TArray<UAnimMontage*> GuardHitReactions;
+	UPROPERTY(EditDefaultsOnly, Category = "Reaction|Parried") UAnimMontage* ParryVictimReaction;
+	UPROPERTY(EditDefaultsOnly, Category = "Reaction|Parried") UAnimMontage* ParrySuccessReaction;
+
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+
+	UFUNCTION() 
+	void HandleDone();
 	
 	UFUNCTION() 
-	void HandleDone() { EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false); }
+	void HandleBlendOut();
+	
+	UFUNCTION() 
+	void HandleParrySuccessCompleted();
+	
+private:
+	TWeakObjectPtr<const AActor> ParriedAttacker;
 };

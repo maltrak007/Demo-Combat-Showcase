@@ -58,3 +58,5 @@ Content/**
 #   CombatMasterBundle/     — paid Fab pack, redistribution not permitted
 #   _ExternalActors_/       — removed, orphaned World Partition data
 #   _ExternalObjects_/      — removed, orphaned World Partition data
+Content/CombatDemoShowcase/Core/Sound
+Content/Characters

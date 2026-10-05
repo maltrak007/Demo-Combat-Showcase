@@ -15,6 +15,7 @@ GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnHealthChanged, float, NewHealth, float, DamageAmount, bool, bIsDead);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnStaminaChanged, float, NewStamina, float, ChangeAmount, bool, bIsDepleted);
 /**
  * 
  */
@@ -35,6 +36,8 @@ public:
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 	
 	UPROPERTY(BlueprintAssignable) FOnHealthChanged OnHealthChanged;
+	
+	UPROPERTY(BlueprintAssignable) FOnStaminaChanged OnStaminaChanged;
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_Health)
 	FGameplayAttributeData Health;

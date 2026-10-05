@@ -6,6 +6,7 @@
 #include "CombatShowcase/Core/GAS/CombatGameplayAbility.h"
 #include "GA_MeleeAbilityBase.generated.h"
 
+enum class EHitOutcome : uint8;
 /**
  * 
  */
@@ -22,8 +23,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") FName LightOpenerRow;
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") FName HeavyOpenerRow;
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") TSubclassOf<UGameplayEffect> DamageEffectClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Strike") TSubclassOf<UGameplayEffect> StaminaDamageEffectClass;
 	
-	UFUNCTION() void HandleHitDetected(AActor* HitActor);
+	UFUNCTION() void HandleHitDetected(AActor* HitActor,EHitOutcome Outcome);
 	UFUNCTION() void HandleMontageCompleted();
 	UFUNCTION() void HandleMontageInterrupted();
 };

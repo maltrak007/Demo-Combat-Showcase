@@ -23,7 +23,7 @@ void UCombatAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute
 	}
 	if (Attribute == GetStaminaAttribute())
 	{
-		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxStamina());
+		NewValue = FMath::Clamp(NewValue, -10.f, GetMaxStamina());
 	}
 }
 
@@ -38,7 +38,8 @@ void UCombatAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 	}
 	if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
 	{
-		SetStamina(FMath::Clamp(GetStamina(), 0.f, GetMaxStamina()));
+		SetStamina(FMath::Clamp(GetStamina(), -10.f, GetMaxStamina()));
+		OnStaminaChanged.Broadcast(GetStamina(), Data.EvaluatedData.Magnitude, GetStamina() <= 0.f);
 	}
 }
 

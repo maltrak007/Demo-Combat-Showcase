@@ -3,17 +3,21 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
-#include "AnimNotifyState_ParryWindow.generated.h"
+#include "AnimNotifyState_GrantGameplayTag.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class GLA_COMBATSYSTEM_API UAnimNotifyState_ParryWindow : public UAnimNotifyState
+class GLA_COMBATSYSTEM_API UAnimNotifyState_GrantGameplayTag : public UAnimNotifyState
 {
 	GENERATED_BODY()
-protected:
+public:
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameplayTag")
+	FGameplayTag GameplayTagToGrant;
 };

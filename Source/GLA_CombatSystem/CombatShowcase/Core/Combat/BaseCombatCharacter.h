@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "Data/CombatData.h"
 #include "GameFramework/Character.h"
 #include "BaseCombatCharacter.generated.h"
 
+class UMotionWarpingComponent;
+class UWidgetComponent;
 class UCombatStatsComponent;
 class UCombatFeedbackComponent;
 class UGameplayEffect;
@@ -27,7 +30,21 @@ public:
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
 	
-	//WEAPON RELATED
+	UCombatAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	
+	// UI FUNCTIONS & STATES
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Combat") float GetHealthPercent() const;
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Combat") float GetStaminaPercent() const;
+	
+	bool IsMovementLocked() const;
+	
+	// STAMINA RELATED FUNCTIONS 
+	void ConsumeStamina(float Amount);
+	
+	void GrantStaminaBurst(float Amount);
+	
+	// WEAPON RELATED
 	UStaticMeshComponent* GetEquippedWeaponMesh() const { return EquippedWeaponMesh; }
 	
 	void SetEquippedWeaponMesh(UStaticMeshComponent* NewWeaponMesh) { EquippedWeaponMesh = NewWeaponMesh; }
@@ -35,7 +52,7 @@ public:
 	UCombatFeedbackComponent* GetFeedbackComponent() const { return FeedbackComponent; }
 	
 	UCombatStatsComponent* GetCombatStatsComponent() const { return CombatStatsComponent; }
-	
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -62,7 +79,13 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UCombatStatsComponent> CombatStatsComponent;
-
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UWidgetComponent> StatWidgetComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat") 
+	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
+	
 	virtual void PossessedBy(AController* NewController) override;
 	
 	void FaceDirection(float SignedDirection);
@@ -75,9 +98,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Combat") 
 	float DeathImpulseScale = 8.f;
 	
+	// STAMINA SECTION
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Stamina") TSubclassOf<UGameplayEffect> StaminaCostEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Stamina") TSubclassOf<UGameplayEffect> StaminaRegenEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Stamina") TSubclassOf<UGameplayEffect> StaminaBurstEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Stamina") float StaminaRegenDelayNormal = 1.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Stamina") float StaminaRegenDelayExhausted = 3.f;
+	
 private:
 	void InitializeAttributes();
 	
 	void GrantStartingAbilities();
 	
+	FTimerHandle StaminaRegenDelayHandle;
+	void ResumeStaminaRegen();
 };

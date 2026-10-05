@@ -2,12 +2,16 @@
 
 
 #include "BaseCombatCharacter.h"
+
+#include "MotionWarpingComponent.h"
 #include "CombatShowcase/Core/GAS/CombatAttributeSet.h"
 #include "Components/CombatFeedbackComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
+#include "CombatShowcase/Core/HUD/StatWidgetBase.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CombatStatsComponent.h"
+#include "Components/WidgetComponent.h"
 
 // Sets default values
 ABaseCombatCharacter::ABaseCombatCharacter()
@@ -29,6 +33,18 @@ ABaseCombatCharacter::ABaseCombatCharacter()
 	
 	FeedbackComponent = CreateDefaultSubobject<UCombatFeedbackComponent>(TEXT("FeedbackComponent"));
 	CombatStatsComponent = CreateDefaultSubobject<UCombatStatsComponent>(TEXT("CombatStatsComponent"));
+	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
+	
+	//PLACEHOLDER REMOVE AT PHASE 9
+	StatWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("StatWidgetComponent"));
+	StatWidgetComponent->SetupAttachment(GetMesh());
+	StatWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 200.f)); // tune against your actual skeleton height
+	StatWidgetComponent->SetWidgetSpace(EWidgetSpace::World);   
+	StatWidgetComponent->SetDrawSize(FVector2D(200.f, 50.f));
+	StatWidgetComponent->SetGeometryMode(EWidgetGeometryMode::Plane); // Cylinder is for curved surfaces, not this
+	StatWidgetComponent->SetPivot(FVector2D(0.5f, 0.5f)); // default is (0,0) — top-left anchored, a documented, commonly-hit surprise
+	StatWidgetComponent->SetRelativeScale3D(FVector(0.5f)); // scale down to fit the character
+	StatWidgetComponent->SetBlendMode(EWidgetBlendMode::Masked);
 }
 
 void ABaseCombatCharacter::Tick(float DeltaTime)
@@ -41,6 +57,11 @@ void ABaseCombatCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	GetCharacterMovement()->SetPlaneConstraintOrigin(GetActorLocation());
+	
+	if (UStatWidgetBase* StatWidget = Cast<UStatWidgetBase>(StatWidgetComponent->GetUserWidgetObject()))
+	{
+		StatWidget->InitializeForCharacter(this);
+	}
 }
 
 void ABaseCombatCharacter::PossessedBy(AController* NewController)
@@ -76,6 +97,17 @@ void ABaseCombatCharacter::InitializeAttributes()
     {
         AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
     }
+	
+	if (StaminaRegenEffect)
+	{
+		FGameplayEffectContextHandle RegenContext = AbilitySystemComponent->MakeEffectContext();
+		RegenContext.AddSourceObject(this);
+		FGameplayEffectSpecHandle RegenSpec = AbilitySystemComponent->MakeOutgoingSpec(StaminaRegenEffect, 1.f, RegenContext);
+		if (RegenSpec.IsValid())
+		{
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*RegenSpec.Data.Get());
+		}
+	}
 }
 
 void ABaseCombatCharacter::GrantStartingAbilities()
@@ -87,6 +119,11 @@ void ABaseCombatCharacter::GrantStartingAbilities()
 			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AbilityClass, 1, INDEX_NONE, this));
 		}
 	}
+}
+
+void ABaseCombatCharacter::ResumeStaminaRegen()
+{
+	AbilitySystemComponent->RemoveLooseGameplayTag(CombatTags::State_Stamina_RegenBlocked);
 }
 
 void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmount, bool bIsDead)
@@ -105,9 +142,9 @@ void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmou
 		AttackTags.AddTag(CombatTags::Ability_Type_Attack);
 		AbilitySystemComponent->CancelAbilities(&AttackTags);
 		
-		FGameplayEventData EventData;
-		EventData.EventTag = CombatTags::Event_Combat_HitReact;
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, CombatTags::Event_Combat_HitReact, EventData);
+		// FGameplayEventData EventData;
+		// EventData.EventTag = CombatTags::Event_Combat_HitReact;
+		// UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, CombatTags::Event_Combat_HitReact, EventData);
 	}
 }
 
@@ -128,5 +165,61 @@ void ABaseCombatCharacter::TriggerDeath()
 	if (!IsPlayerControlled())
 	{
 		GetFeedbackComponent()->TriggerDeathSlowMo();
+	}
+}
+
+float ABaseCombatCharacter::GetHealthPercent() const
+{
+	return (AttributeSet && AttributeSet->GetMaxHealth() > 0.f) ? AttributeSet->GetHealth() / AttributeSet->GetMaxHealth() : 0.f;
+}
+
+float ABaseCombatCharacter::GetStaminaPercent() const
+{
+	return (AttributeSet && AttributeSet->GetMaxStamina() > 0.f) ? AttributeSet->GetStamina() / AttributeSet->GetMaxStamina() : 0.f;
+}
+
+bool ABaseCombatCharacter::IsMovementLocked() const
+{
+	return AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::State_Combat_MovementLocked);
+}
+
+void ABaseCombatCharacter::ConsumeStamina(float Amount)
+{
+	if (!StaminaCostEffect || !AbilitySystemComponent) return;
+
+	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+	Context.AddSourceObject(this);
+	FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(StaminaCostEffect, 1.f, Context);
+	if (!Spec.IsValid()) return;
+	
+	// REVISE CAUSE IT CAN GO WAY FURTHER BELOW 0 THAN EXPECTED
+	Spec.Data->SetSetByCallerMagnitude(CombatTags::Data_StaminaConsumed, -Amount);
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::State_Stamina_RegenBlocked))
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(CombatTags::State_Stamina_RegenBlocked);
+	}
+
+	// Decided by the RESULT of this spend, not the amount — hitting empty specifically
+	// gets the longer penalty delay, everything else gets the short one.
+	const bool bExhausted = AttributeSet->GetStamina() <= 0.f;
+	const float Delay = bExhausted ? StaminaRegenDelayExhausted : StaminaRegenDelayNormal;
+
+	// Always resets to the full delay on every new spend — matches "after your last action"
+	// for the normal case, and "resets to three seconds" for the exhausted case, with the
+	// same one mechanism serving both.
+	GetWorld()->GetTimerManager().SetTimer(StaminaRegenDelayHandle, this, &ABaseCombatCharacter::ResumeStaminaRegen, Delay, false);
+}
+
+void ABaseCombatCharacter::GrantStaminaBurst(float Amount)
+{
+	if (!StaminaBurstEffect || !AbilitySystemComponent) return;
+	FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+	Context.AddSourceObject(this);
+	FGameplayEffectSpecHandle Spec = AbilitySystemComponent->MakeOutgoingSpec(StaminaBurstEffect, 1.f, Context);
+	if (Spec.IsValid())
+	{
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 	}
 }

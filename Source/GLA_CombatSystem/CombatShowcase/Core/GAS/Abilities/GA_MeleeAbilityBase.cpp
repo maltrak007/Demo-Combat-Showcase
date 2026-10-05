@@ -11,13 +11,12 @@
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "CombatShowcase/Core/GAS/AbilityTasks/AbilityTask_MultiBoneHitTrace.h"
 
-
 UGA_MeleeAbilityBase::UGA_MeleeAbilityBase()
 {
 	AbilityTags.AddTag(CombatTags::Ability_Type_Attack);
 	ActivationOwnedTags.AddTag(CombatTags::Ability_Type_Attack);
-	
-	// One class, both triggers — replaces the separate GA_LightAttack/GA_HeavyAttack split
+	ActivationOwnedTags.AddTag(CombatTags::State_Combat_MovementLocked);
+
 	FAbilityTriggerData LightTrigger;
 	LightTrigger.TriggerTag = CombatTags::Event_Ability_LightAttack;
 	LightTrigger.TriggerSource = EGameplayAbilityTriggerSource::GameplayEvent;
@@ -44,7 +43,7 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	
 	if (Stats && !Stats->GetCurrentRow().IsNone())
 	{
-		RowToPlay = Stats->GetCurrentRow(); // mid-chain — resume where the graph left off
+		RowToPlay = Stats->GetCurrentRow(); 
 	}
 	else
 	{
@@ -70,20 +69,36 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	{
 		Stats->CacheContinuations(Row->NextRowOnLight, Row->NextRowOnHeavy);
 	}
-
-	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Row->Montage);
+	
+	if (Avatar)
+	{
+		Avatar->ConsumeStamina(Row->StaminaCost);
+	}
+	
+	const float PlayRate = (Avatar && Avatar->GetStaminaPercent() < 0.15f) ? 0.85f : Row->Montage->RateScale;
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Row->Montage,PlayRate);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_MeleeAbilityBase::HandleMontageCompleted);
 	MontageTask->OnInterrupted.AddDynamic(this, &UGA_MeleeAbilityBase::HandleMontageInterrupted);
 	MontageTask->OnCancelled.AddDynamic(this, &UGA_MeleeAbilityBase::HandleMontageInterrupted);
 	MontageTask->ReadyForActivation();
-
-	UAbilityTask_MultiBoneHitTrace* HitboxTask = UAbilityTask_MultiBoneHitTrace::CreateMultiBoneHitTrace(this, Row->Hitboxes, DamageEffectClass, Row->Damage, Row->ImpactFeel);
+	
+	FCombatStrikePayload Payload;
+	Payload.Damage = Row->Damage;
+	Payload.StaminaDamage = Row->StaminaDamage;
+	Payload.Direction = Row->Direction;
+	Payload.ReactionDirection = Row->ReactionDirection;
+	Payload.ImpactFeel = Row->ImpactFeel;
+	Payload.HPEffectClass = DamageEffectClass;
+	Payload.STAEffectClass = StaminaDamageEffectClass;
+	
+	UAbilityTask_MultiBoneHitTrace* HitboxTask = UAbilityTask_MultiBoneHitTrace::CreateMultiBoneHitTrace(this, Row->Hitboxes, Payload);
 	HitboxTask->OnMultiHitDetected.AddDynamic(this, &UGA_MeleeAbilityBase::HandleHitDetected);
 	HitboxTask->ReadyForActivation();
 }
 
-void UGA_MeleeAbilityBase::HandleHitDetected(AActor* HitActor)
+void UGA_MeleeAbilityBase::HandleHitDetected(AActor* HitActor, EHitOutcome Outcome)
 {
+	if (Outcome != EHitOutcome::Unblocked) return;
 	// Reserved for ability-level reactions later (combo counters, etc.).
 	if (APlayerCombatCharacter* AttackerChar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo()))
 	{

@@ -16,6 +16,4 @@ class GLA_COMBATSYSTEM_API UAnimNotifyState_HitboxWindow : public UAnimNotifySta
 	GENERATED_BODY()
 public:
 	UAnimNotifyState_HitboxWindow() {OpenEventTag = CombatTags::Event_Combat_HitboxOpen; CloseEventTag = CombatTags::Event_Combat_HitboxClose;  }
-//	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
-//	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 };

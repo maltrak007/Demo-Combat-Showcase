@@ -3,9 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CombatShowcase/Core/Combat/Data/CombatData.h"
 #include "Components/ActorComponent.h"
 #include "CombatFeedbackComponent.generated.h"
 
+struct FGameplayTag;
+class UGameplayEffect;
 struct FCombatImpactEvent;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -19,6 +22,12 @@ public:
 
 	void ReactToImpact(const FCombatImpactEvent& Event);
 	
+	EHitOutcome ResolveIncomingHit(EStrikeDirection StrikeDirection) const;
+	
+	FHitResolution ResolveAndApplyHit(AActor* Instigator, const FHitResult& Hit, const FCombatStrikePayload& Payload);
+	
+	void DispatchHitReaction(AActor* Instigator, EHitOutcome Outcome, EHitReactionDirection ReactionDirection);
+
 	FVector GetLastKnockbackVelocity() const { return LastKnockbackVelocity; }
 	
 	void TriggerDeathSlowMo();
@@ -36,6 +45,7 @@ private:
 	void TriggerCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale);
 	void EndHitstop();
 	void EndSlowMo();
+	void SendReaction(AActor* ReactingActor, AActor* OtherParty, const FGameplayTag& Tag, float Magnitude, bool bCancelCombatAbilities, bool bCancelBlock);
 	
 	FTimerHandle SlowMoTimerHandle;
 	FTimerHandle HitstopTimerHandle;
