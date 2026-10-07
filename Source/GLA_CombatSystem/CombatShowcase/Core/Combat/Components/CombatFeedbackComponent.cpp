@@ -17,7 +17,7 @@
 UCombatFeedbackComponent::UCombatFeedbackComponent()
 {
 
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 

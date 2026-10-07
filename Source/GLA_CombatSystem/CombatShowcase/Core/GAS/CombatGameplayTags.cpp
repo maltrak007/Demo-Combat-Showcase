@@ -17,6 +17,8 @@ namespace CombatTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_Invincible, "State.Combat.Invincible");
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_Telegraphing, "State.Combat.Telegraphing");
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_MovementLocked, "State.Combat.MovementLocked");
+	UE_DEFINE_GAMEPLAY_TAG(State_Combat_Executable, "State.Combat.Executable");
+	UE_DEFINE_GAMEPLAY_TAG(State_Combat_BeingExecuted, "State.Combat.BeingExecuted");
 	
 	UE_DEFINE_GAMEPLAY_TAG(State_Blocking_DirectionUp, "State.Blocking.DirectionUp");
 	UE_DEFINE_GAMEPLAY_TAG(State_Blocking_DirectionDown, "State.Blocking.DirectionDown");

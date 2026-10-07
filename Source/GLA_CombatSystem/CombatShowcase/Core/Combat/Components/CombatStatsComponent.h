@@ -14,6 +14,8 @@ class GLA_COMBATSYSTEM_API UCombatStatsComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
+	UCombatStatsComponent(){PrimaryComponentTick.bCanEverTick = false;}
+	
 	FName GetCurrentRow() const { return CurrentRow; }
 	void AdvanceCombo(FName NextRow) { CurrentRow = NextRow; }
 	void ResetCombo() { CurrentRow = NAME_None; }
