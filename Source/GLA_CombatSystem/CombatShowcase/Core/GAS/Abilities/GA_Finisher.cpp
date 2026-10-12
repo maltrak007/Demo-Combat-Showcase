@@ -8,12 +8,17 @@
 #include "ContextualAnimSceneAsset.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "CombatShowcase/Core/Combat/BaseCombatCharacter.h"
-#include "CombatShowcase/Core/Combat/Components/CombatFeedbackComponent.h"
 #include "CombatShowcase/Core/Combat/Components/CombatStatsComponent.h"
 #include "CombatShowcase/Core/GAS/CombatAttributeSet.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "Engine/OverlapResult.h"
 
+static TAutoConsoleVariable<bool> CVarDrawFinisherRange(
+	TEXT("Combat.DrawFinisherRange"),
+	false,
+	TEXT("Draw the execution targeting region and the candidates the finisher scan considers."),
+	ECVF_Cheat
+);
 
 UGA_Finisher::UGA_Finisher()
 {
@@ -35,7 +40,9 @@ ABaseCombatCharacter* UGA_Finisher::FindTarget(const AActor* Owner) const
 
 	const FVector Origin = Owner->GetActorLocation();
 	const float Facing = (Owner->GetActorForwardVector().X >= 0.f) ? 1.f : -1.f;
-
+	const bool bDraw = CVarDrawFinisherRange.GetValueOnGameThread();
+	const float DrawTime = FMath::Max(ScanInterval * 1.5f, 0.1f); 
+	
 	TArray<FOverlapResult> Overlaps;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(FinisherTarget), false, Owner);
 	World->OverlapMultiByObjectType(Overlaps, Origin, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn),
@@ -52,8 +59,28 @@ ABaseCombatCharacter* UGA_Finisher::FindTarget(const AActor* Owner) const
 		if (Delta.X * Facing <= 0.f) continue; // front executions only
 		const float Distance = FMath::Abs(Delta.X);
 		if (Distance > Range || FMath::Abs(Delta.Y) > LaneTolerance) continue;
-
+		const bool bInRegion = Delta.X * Facing > 0.f && Distance <= Range && FMath::Abs(Delta.Y) <= LaneTolerance;
+		
+		if (bDraw)
+		{
+			// Red: executable but outside the region. Yellow: inside it.
+			DrawDebugSphere(World, Candidate->GetActorLocation() + FVector(0.f, 0.f, 120.f), 12.f, 8,
+				bInRegion ? FColor::Yellow : FColor::Red, false, DrawTime);
+		}
+		if (!bInRegion) continue;
+		
 		if (Distance < BestDistance) { BestDistance = Distance; Best = Candidate; }
+	}
+	if (bDraw)
+	{
+		// The accepted region: forward along the lane up to Range, LaneTolerance to each side.
+		const FVector Center = Origin + FVector(Facing * Range * 0.5f, 0.f, 0.f);
+		DrawDebugBox(World, Center, FVector(Range * 0.5f, LaneTolerance, 50.f), FQuat::Identity,
+			Best ? FColor::Green : FColor::Cyan, false, DrawTime, 0, 2.f);
+		if (Best)
+		{
+			DrawDebugSphere(World, Best->GetActorLocation() + FVector(0.f, 0.f, 120.f), 20.f, 12, FColor::Green, false, DrawTime, 0, 2.f);
+		}
 	}
 	return Best;
 }
@@ -105,7 +132,7 @@ UContextualAnimSceneAsset* UGA_Finisher::PickScene()
 		if (ExecutionScenes[i]) Candidates.Add(i);
 	if (Candidates.IsEmpty()) return nullptr;
 
-	if (Candidates.Num() > 1) Candidates.Remove(LastSceneIndex); // never the same execution twice in a row
+	if (Candidates.Num() > 1) Candidates.Remove(LastSceneIndex); 
 	LastSceneIndex = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
 	return ExecutionScenes[LastSceneIndex];
 }
@@ -140,20 +167,18 @@ void UGA_Finisher::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		Stats->CacheContinuations(NAME_None, NAME_None);
 		Stats->ConsumeComboRequest();
 	}
-
-	// Applied after the cancels: GA_Evade's EndAbility resets this tag's count to zero.
+	
 	ASC->AddLooseGameplayTag(CombatTags::State_Combat_Invincible);
 	bPlayerInvincibleHeld = true;
 
 	ProtectVictim(Target);
-
-	// The scene asset does the rest: alignment, IK, montage sync, and collision between the pair.
+	
 	TMap<FName, FContextualAnimSceneBindingContext> Roles;
-	Roles.Add(AttackerRole, FContextualAnimSceneBindingContext(Player)); // VERIFY the constructor
+	Roles.Add(AttackerRole, FContextualAnimSceneBindingContext(Player));
 	Roles.Add(VictimRole, FContextualAnimSceneBindingContext(Target));
 
 	FContextualAnimSceneBindings Bindings;
-	if (!FContextualAnimSceneBindings::TryCreateBindings(*Scene, /*SectionIdx*/ 0, /*AnimSetIdx*/ 0, Roles, Bindings)
+	if (!FContextualAnimSceneBindings::TryCreateBindings(*Scene,  0,  0, Roles, Bindings)
 		|| !PlayerComp->StartContextualAnimScene(Bindings))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s: could not start scene %s. Check the role names against the asset."), *GetName(), *Scene->GetName());
@@ -162,7 +187,7 @@ void UGA_Finisher::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 	}
 	bSceneStarted = true;
 
-	PlayerComp->OnLeftSceneDelegate.AddUniqueDynamic(this, &UGA_Finisher::HandleSceneLeft); // VERIFY the member name
+	PlayerComp->OnLeftSceneDelegate.AddUniqueDynamic(this, &UGA_Finisher::HandleSceneLeft); 
 
 	UAbilityTask_WaitDelay* Watchdog = UAbilityTask_WaitDelay::WaitDelay(this, MaxSceneDuration);
 	Watchdog->OnFinish.AddDynamic(this, &UGA_Finisher::HandleSceneTimeout);
@@ -198,8 +223,7 @@ void UGA_Finisher::KillVictim(ABaseCombatCharacter* InVictim)
 	UCombatAttributeSet* Attributes = InVictim->GetAttributeSet();
 	if (!SourceASC || !TargetASC || !Attributes || !DamageEffectClass || Attributes->GetHealth() <= 0.f) return;
 
-	// if (UCombatFeedbackComponent* Feedback = InVictim->GetFeedbackComponent())
-	// 	Feedback->ClearLastKnockback(); // otherwise the ragdoll flies off along the last hit's direction
+	//Add in here to not use the ragdoll impulse
 
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
@@ -208,7 +232,7 @@ void UGA_Finisher::KillVictim(ABaseCombatCharacter* InVictim)
 	if (Spec.IsValid())
 	{
 		Spec.Data->SetSetByCallerMagnitude(CombatTags::Data_Damage, -Attributes->GetHealth());
-		SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC); // HandleHealthChanged then runs TriggerDeath: ragdoll and slow-mo
+		SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
 	}
 }
 
@@ -242,7 +266,7 @@ void UGA_Finisher::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 		}
 	}
 
-	ReleaseVictim(); // before the kill, so nothing the victim still holds interferes
+	ReleaseVictim();
 	if (bKill) KillVictim(Dying);
 
 	bSceneStarted = false;

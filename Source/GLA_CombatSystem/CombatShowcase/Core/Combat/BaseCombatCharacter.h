@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "GenericTeamAgentInterface.h"
 #include "Data/CombatData.h"
 #include "GameFramework/Character.h"
 #include "BaseCombatCharacter.generated.h"
@@ -18,7 +19,7 @@ class UGameplayAbility;
 class UCombatAttributeSet;
 
 UCLASS()
-class GLA_COMBATSYSTEM_API ABaseCombatCharacter : public ACharacter, public IAbilitySystemInterface
+class GLA_COMBATSYSTEM_API ABaseCombatCharacter : public ACharacter, public IAbilitySystemInterface, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -56,7 +57,11 @@ public:
 	UCombatFeedbackComponent* GetFeedbackComponent() const { return FeedbackComponent; }
 
 	UCombatStatsComponent* GetCombatStatsComponent() const { return CombatStatsComponent; }
-
+	
+	virtual FGenericTeamId GetGenericTeamId() const override;
+	
+	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override;
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -92,7 +97,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UContextualAnimSceneActorComponent> ContextualAnimSceneActorComponent;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|AI")
+	FGenericTeamId TeamId;
+	
 	virtual void PossessedBy(AController* NewController) override;
 
 	void FaceDirection(float SignedDirection);
@@ -100,7 +108,7 @@ protected:
 	UFUNCTION()
 	void HandleHealthChanged(float NewHealth, float DamageAmount, bool bIsDead);
 
-	void TriggerDeath();
+	virtual void TriggerDeath();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	float DeathImpulseScale = 8.f;
@@ -119,10 +127,10 @@ protected:
 	TSubclassOf<UGameplayEffect> StaminaBurstEffect;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Combat|Stamina")
-	float StaminaRegenDelayNormal = 1.f;
+	float StaminaRegenDelayNormal = 2.f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Combat|Stamina")
-	float StaminaRegenDelayExhausted = 3.f;
+	float StaminaRegenDelayExhausted = 4.f;
 
 private:
 	void InitializeAttributes();

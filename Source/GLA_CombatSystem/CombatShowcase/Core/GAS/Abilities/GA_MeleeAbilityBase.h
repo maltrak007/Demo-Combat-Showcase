@@ -19,11 +19,8 @@ public:
 protected:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "Strike") UDataTable* StrikeDataTable = nullptr;
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") FName LightOpenerRow;
 	UPROPERTY(EditDefaultsOnly, Category = "Strike") FName HeavyOpenerRow;
-	UPROPERTY(EditDefaultsOnly, Category = "Strike") TSubclassOf<UGameplayEffect> DamageEffectClass;
-	UPROPERTY(EditDefaultsOnly, Category = "Strike") TSubclassOf<UGameplayEffect> StaminaDamageEffectClass;
 	
 	UFUNCTION() void HandleHitDetected(AActor* HitActor,EHitOutcome Outcome);
 	UFUNCTION() void HandleMontageCompleted();

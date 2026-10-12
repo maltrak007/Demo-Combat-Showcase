@@ -35,10 +35,9 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	
-	APlayerCombatCharacter* Avatar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo());
+	ABaseCombatCharacter* Avatar = Cast<ABaseCombatCharacter>(GetAvatarActorFromActorInfo());
 	UCombatStatsComponent* Stats = Avatar ? Avatar->GetCombatStatsComponent() : nullptr;
-
+	
 	FName RowToPlay;
 	
 	if (Stats && !Stats->GetCurrentRow().IsNone())
@@ -51,15 +50,16 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		RowToPlay = bHeavyPress ? HeavyOpenerRow : LightOpenerRow;
 	}
 
-	if (!StrikeDataTable || RowToPlay.IsNone())
+	const UDataTable* Table = Stats ? Stats->GetStrikeDataTable() : nullptr;
+	if (!Table || RowToPlay.IsNone())
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	FCombatStrikeRow* Row = StrikeDataTable->FindRow<FCombatStrikeRow>(RowToPlay, TEXT("GA_MeleeAbilityBase"));
+	FCombatStrikeRow* Row = Table->FindRow<FCombatStrikeRow>(RowToPlay, TEXT("GA_MeleeAbilityBase"));
 
-	if (!Row || !CommitAbility(Handle, ActorInfo, ActivationInfo))
+	if (!Row || !Row->Montage || !CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
@@ -88,8 +88,8 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	Payload.Direction = Row->Direction;
 	Payload.ReactionDirection = Row->ReactionDirection;
 	Payload.ImpactFeel = Row->ImpactFeel;
-	Payload.HPEffectClass = DamageEffectClass;
-	Payload.STAEffectClass = StaminaDamageEffectClass;
+	Payload.HPEffectClass = Stats->GetDamageEffectClass();
+	Payload.STAEffectClass = Stats->GetStaminaDamageEffectClass();
 	
 	UAbilityTask_MultiBoneHitTrace* HitboxTask = UAbilityTask_MultiBoneHitTrace::CreateMultiBoneHitTrace(this, Row->Hitboxes, Payload);
 	HitboxTask->OnMultiHitDetected.AddDynamic(this, &UGA_MeleeAbilityBase::HandleHitDetected);
@@ -99,7 +99,7 @@ void UGA_MeleeAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 void UGA_MeleeAbilityBase::HandleHitDetected(AActor* HitActor, EHitOutcome Outcome)
 {
 	if (Outcome != EHitOutcome::Unblocked) return;
-	// Reserved for ability-level reactions later (combo counters, etc.).
+
 	if (APlayerCombatCharacter* AttackerChar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo()))
 	{
 		AttackerChar->GetCombatStatsComponent()->RegisterHitLanded();
@@ -108,9 +108,9 @@ void UGA_MeleeAbilityBase::HandleHitDetected(AActor* HitActor, EHitOutcome Outco
 
 void UGA_MeleeAbilityBase::HandleMontageCompleted()
 {
-	if (APlayerCombatCharacter* PlayerChar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo()))
+	if (ABaseCombatCharacter* Character = Cast<ABaseCombatCharacter>(GetAvatarActorFromActorInfo()))
 	{
-		PlayerChar->GetCombatStatsComponent()->ResetCombo();
+		Character->GetCombatStatsComponent()->ResetCombo();
 	}
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 }

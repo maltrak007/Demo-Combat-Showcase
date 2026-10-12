@@ -20,10 +20,6 @@ public:
 protected:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "Counter") UDataTable* CounterstrikeDataTable = nullptr;
-	UPROPERTY(EditDefaultsOnly, Category = "Counter") TSubclassOf<UGameplayEffect> DamageEffectClass;
-	UPROPERTY(EditDefaultsOnly, Category = "Counter") TSubclassOf<UGameplayEffect> StaminaDamageEffectClass;
-	
 	UFUNCTION() void HandleHitDetected(AActor* HitActor,EHitOutcome Outcome);
 	UFUNCTION() void HandleMontageCompleted();
 	UFUNCTION() void HandleMontageInterrupted();

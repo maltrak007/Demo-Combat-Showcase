@@ -15,6 +15,7 @@
 #include "Components/CombatStatsComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Perception/AISense_Sight.h"
 
 // Sets default values
 ABaseCombatCharacter::ABaseCombatCharacter()
@@ -39,7 +40,7 @@ ABaseCombatCharacter::ABaseCombatCharacter()
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
 	ContextualAnimSceneActorComponent = CreateDefaultSubobject<UContextualAnimSceneActorComponent>(
 		TEXT("ContextualAnimSceneActorComponent"));
-
+	
 	//PLACEHOLDER REMOVE AT PHASE 9
 	StatWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("StatWidgetComponent"));
 	StatWidgetComponent->SetupAttachment(GetMesh());
@@ -56,6 +57,17 @@ ABaseCombatCharacter::ABaseCombatCharacter()
 void ABaseCombatCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+
+FGenericTeamId ABaseCombatCharacter::GetGenericTeamId() const
+{
+	return TeamId;
+}
+
+void ABaseCombatCharacter::SetGenericTeamId(const FGenericTeamId& TeamID)
+{
+	TeamId = TeamID;
 }
 
 // Called when the game starts or when spawned
@@ -144,6 +156,8 @@ void ABaseCombatCharacter::UpdateExecutableState()
 	else AbilitySystemComponent->RemoveLooseGameplayTag(CombatTags::State_Combat_Executable);
 	bExecutableTagHeld = bShouldBeExecutable;
 }
+
+
 
 void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmount, bool bIsDead)
 {

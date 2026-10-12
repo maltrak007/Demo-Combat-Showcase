@@ -45,4 +45,10 @@ namespace CombatTags
 	
 	UE_DEFINE_GAMEPLAY_TAG(Data_Damage, "Data.Damage");
 	UE_DEFINE_GAMEPLAY_TAG(Data_StaminaConsumed, "Data.StaminaConsumed");
+	
+	UE_DEFINE_GAMEPLAY_TAG(AI_State_Patrol, "AI.State.Patrol");
+	UE_DEFINE_GAMEPLAY_TAG(AI_State_Leashing, "AI.State.Leashing");
+	UE_DEFINE_GAMEPLAY_TAG(AI_State_Chase, "AI.State.Chase");
+	UE_DEFINE_GAMEPLAY_TAG(AI_State_MeleeCombat, "AI.State.MeleeCombat");
+	UE_DEFINE_GAMEPLAY_TAG(AI_State_RangedCombat, "AI.State.RangedCombat");
 }

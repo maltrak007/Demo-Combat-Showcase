@@ -6,15 +6,16 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayTagContainer.h"
 #include "Abilities/GameplayAbilityTypes.h"
+#include "CombatShowcase/Core/Combat/Characters/Enemy/Behaviour/CombatData.h"
 #include "CombatShowcase/Core/Combat/Components/CombatStatsComponent.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
-
 
 // Sets default values
 APlayerCombatCharacter::APlayerCombatCharacter()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	SetGenericTeamId(FGenericTeamId(static_cast<uint8>(ECombatTeam::Player)));
 }
 
 // Called when the game starts or when spawned

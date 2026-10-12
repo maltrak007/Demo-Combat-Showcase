@@ -51,5 +51,12 @@ namespace CombatTags
 	
 	// Data tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Damage);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_StaminaConsumed);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_StaminaConsumed);	
+	
+	// AI Tags
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AI_State_Patrol);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AI_State_Leashing);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AI_State_Chase);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AI_State_MeleeCombat);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AI_State_RangedCombat);
 }
