@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "EnemyBaseCharacter.h"
+#include "CombatShowcase/Core/Combat/Components/EnemyBehaviourComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Behaviour/BehaviourData.h"
@@ -36,14 +37,6 @@ ABaseEnemyAIController::ABaseEnemyAIController()
 void ABaseEnemyAIController::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	if (UAbilitySystemComponent* ASC = GetPawn() ? GetPawn()->FindComponentByClass<UAbilitySystemComponent>() : nullptr)
-	{
-		ASC->RegisterGameplayTagEvent(CombatTags::State_Combat_BeingExecuted,
-			EGameplayTagEventType::NewOrRemoved).AddUObject(
-			this, &ABaseEnemyAIController::OnExecutionTagChanged);
-	}
-	
 }
 FGenericTeamId ABaseEnemyAIController::GetGenericTeamId() const
 {
@@ -61,7 +54,22 @@ void ABaseEnemyAIController::SetGenericTeamId(const FGenericTeamId& NewID)
 
 void ABaseEnemyAIController::OnPossess(APawn* InPawn)
 {
-	Super::OnPossess(InPawn); // the pawn's PossessedBy has run by here, so its team id is readable
+	Super::OnPossess(InPawn);
+
+	if (const IGenericTeamAgentInterface* Agent = Cast<IGenericTeamAgentInterface>(InPawn))
+	{
+		SetGenericTeamId(Agent->GetGenericTeamId());
+	}
+	ApplyPerceptionSettings(DefaultPerception);
+	if (const AEnemyBaseCharacter* BehaviourOwner = Cast<AEnemyBaseCharacter>(InPawn))
+	{
+		// A behaviour row that sets its own perception replaces the controller's defaults.
+		if (const UEnemyBehaviourComponent* Behaviour = BehaviourOwner->GetBehaviourComponent())
+		{
+			const FWeaponBehaviourRow& Stats = Behaviour->GetStats();
+			if (Stats.bOverridePerception) ApplyPerceptionSettings(Stats.Perception);
+		}
+	}
 
 	AEnemyBaseCharacter* Enemy = Cast<AEnemyBaseCharacter>(InPawn);
 	if (!Enemy)
@@ -74,35 +82,28 @@ void ABaseEnemyAIController::OnPossess(APawn* InPawn)
 		UE_LOG(LogTemp, Warning, TEXT("%s has no BehaviorTreeAsset assigned."), *GetName());
 		return;
 	}
-	if (const IGenericTeamAgentInterface* Agent = Cast<IGenericTeamAgentInterface>(InPawn))
-	{
-		SetGenericTeamId(Agent->GetGenericTeamId());
-	}
-	// After possession, so the sense registers this listener with the pawn's team id.
-	ApplyPerceptionSettings(DefaultPerception);
-
 	if (!RunBehaviorTree(BehaviorTreeAsset))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s: RunBehaviorTree failed for %s."), *GetName(), *BehaviorTreeAsset->GetName());
 		return;
 	}
-	
 	ValidateBlackboardKeys();
 
 	// Bound only now that the blackboard exists, so no early perception event is dropped.
 	if (UAIPerceptionComponent* Perception = GetPerceptionComponent())
 	{
-		Perception->OnTargetPerceptionUpdated.RemoveAll(this); // safe if OnPossess runs again
+		Perception->OnTargetPerceptionUpdated.RemoveAll(this);
 		Perception->OnTargetPerceptionUpdated.AddDynamic(this, &ABaseEnemyAIController::OnTargetPerceptionUpdated);
 	}
-	
-	if (UBehaviorTreeComponent* Tree = Cast<UBehaviorTreeComponent>(BrainComponent))
+
+	if (UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent())
 	{
-		for (const TPair<FGameplayTag, TObjectPtr<UBehaviorTree>>& Slot : DefaultSubtrees)
-		{
-			if (Slot.Value) Tree->SetDynamicSubtree(Slot.Key, Slot.Value);
-		}
+		FOnGameplayEffectTagCountChanged& Event = ASC->RegisterGameplayTagEvent(
+			CombatTags::State_Combat_BeingExecuted, EGameplayTagEventType::NewOrRemoved);
+		Event.RemoveAll(this);
+		Event.AddUObject(this, &ABaseEnemyAIController::OnExecutionTagChanged);
 	}
+
 	GetBlackboardComponent()->SetValueAsVector(EnemyBBKeys::HomeLocation, InPawn->GetActorLocation());
 }
 
@@ -112,14 +113,29 @@ void ABaseEnemyAIController::OnUnPossess()
 	{
 		Perception->OnTargetPerceptionUpdated.RemoveAll(this);
 	}
+	if (const ABaseCombatCharacter* OwnerPawn = Cast<ABaseCombatCharacter>(GetPawn()))
+	{
+		if (UAbilitySystemComponent* ASC = OwnerPawn->GetAbilitySystemComponent())
+		{
+			ASC->RegisterGameplayTagEvent(CombatTags::State_Combat_BeingExecuted, EGameplayTagEventType::NewOrRemoved).RemoveAll(this);
+		}
+	}
+	GetWorldTimerManager().ClearTimer(ForgetTargetHandle);
 	Super::OnUnPossess();
 }
 
 void ABaseEnemyAIController::OnExecutionTagChanged(FGameplayTag Tag, int32 NewCount)
 {
+	UBrainComponent* Brain = GetBrainComponent();
+	if (!Brain) return;
+
 	if (NewCount > 0)
 	{
-		GetBrainComponent()->StopLogic(TEXT("Execution started"));
+		Brain->StopLogic(TEXT("Being executed"));
+	}
+	else if (const ABaseCombatCharacter* OwnerPawn = Cast<ABaseCombatCharacter>(GetPawn()); OwnerPawn && OwnerPawn->GetHealthPercent() > 0.f)
+	{
+		Brain->RestartLogic(); 
 	}
 }
 
@@ -130,7 +146,8 @@ bool ABaseEnemyAIController::ValidateBlackboardKeys() const
 
 	bool bAllPresent = true;
 	for (const FName& Key : { EnemyBBKeys::TargetActor, EnemyBBKeys::LastKnownPos, EnemyBBKeys::HasLOS,
-							  EnemyBBKeys::AIState, EnemyBBKeys::MoveToLocation, EnemyBBKeys::HomeLocation})
+							  EnemyBBKeys::AIState, EnemyBBKeys::MoveToLocation, EnemyBBKeys::HomeLocation,
+								  EnemyBBKeys::HasAttackToken, EnemyBBKeys::AttackSideSign, EnemyBBKeys::AttackLocation})
 	{
 		if (BB->GetKeyID(Key) == FBlackboard::InvalidKey)
 		{
@@ -149,12 +166,32 @@ void ABaseEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulu
 	if (!IsValid(Actor) || !BB) return;
 	if (Stimulus.Type != UAISense::GetSenseID<UAISense_Sight>()) return;
 
-	BB->SetValueAsVector(EnemyBBKeys::LastKnownPos, Stimulus.StimulusLocation);
 	const bool bSensed = Stimulus.WasSuccessfullySensed();
 	BB->SetValueAsBool(EnemyBBKeys::HasLOS, bSensed);
-	if (bSensed) BB->SetValueAsObject(EnemyBBKeys::TargetActor, Actor);
+
+	if (bSensed)
+	{
+		BB->SetValueAsObject(EnemyBBKeys::TargetActor, Actor);
+		BB->SetValueAsVector(EnemyBBKeys::LastKnownPos, Stimulus.StimulusLocation);
+		GetWorldTimerManager().ClearTimer(ForgetTargetHandle);
+	}
+	else if (BB->GetValueAsObject(EnemyBBKeys::TargetActor) == Actor)
+	{
+		// Only the current target counts. Calling SetTimer on the same handle restarts the countdown.
+		if (TargetMemorySeconds <= 0.f) ForgetTarget();
+		else GetWorldTimerManager().SetTimer(ForgetTargetHandle, this, &ABaseEnemyAIController::ForgetTarget, TargetMemorySeconds, false);
+	}
 }
 
+void ABaseEnemyAIController::ForgetTarget()
+{
+	if (UBlackboardComponent* BB = GetBlackboardComponent())
+	{
+		BB->ClearValue(EnemyBBKeys::TargetActor);
+		BB->SetValueAsBool(EnemyBBKeys::HasLOS, false);
+		UE_LOG(LogTemp, Log, TEXT("%s forgot its target."), *GetName());
+	}
+}
 
 ETeamAttitude::Type ABaseEnemyAIController::GetTeamAttitudeTowards(const AActor& Other) const
 {
@@ -173,8 +210,8 @@ void ABaseEnemyAIController::ApplyPerceptionSettings(const FEnemyPerceptionSetti
 	SightConfig->SightRadius = Settings.SightRadius;
 	SightConfig->LoseSightRadius = FMath::Max(Settings.LoseSightRadius, Settings.SightRadius);
 	SightConfig->PeripheralVisionAngleDegrees = Settings.PeripheralVisionAngle;
-	SightConfig->AutoSuccessRangeFromLastSeenLocation = -1.f;
-	SightConfig->SetMaxAge(Settings.StimulusMaxAge);
+	TargetMemorySeconds = Settings.TargetMemorySeconds;
+	
 
 	// Values only: the sense was configured in the constructor. This pushes them to the live listener.
 	Perception->RequestStimuliListenerUpdate();

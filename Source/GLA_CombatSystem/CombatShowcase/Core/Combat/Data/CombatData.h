@@ -1,7 +1,9 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "CombatData.generated.h"
 
+class UNiagaraSystem;
 class UGameplayEffect;
 
 UENUM(BlueprintType)
@@ -24,13 +26,14 @@ enum class EHitOutcome : uint8
 	Unblocked, 
 	Blocked, 
 	Parried,
-	Invincible
+	Invincible,
+	Whiff
 };
 
 UENUM(BlueprintType)
 enum class EHitReactionDirection : uint8
 {
-	Generic,   // fallback, and the default for rows you haven't authored yet
+	Generic,   
 	HeadLeft,
 	HeadMiddle,
 	HeadRight,
@@ -72,6 +75,7 @@ struct FCombatStrikeRow : public FTableRowBase
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, Category = "Strike") UAnimMontage* Montage = nullptr;
+	UPROPERTY(EditAnywhere, Category = "Strike") float MontagePlayRate = 1.0f;
 	UPROPERTY(EditAnywhere, Category = "Strike") TArray<FCombatHitboxDef> Hitboxes;
 	UPROPERTY(EditAnywhere, Category = "Strike") float Damage = 10.f;
 	UPROPERTY(EditAnywhere, Category = "Strike") float StaminaCost = 0.f;
@@ -79,6 +83,7 @@ struct FCombatStrikeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Strike") EStrikeDirection Direction = EStrikeDirection::Up;
 	UPROPERTY(EditAnywhere, Category = "Strike|Reaction") EHitReactionDirection ReactionDirection = EHitReactionDirection::Generic;
 	UPROPERTY(EditAnywhere, Category = "Strike|Feel") FCombatImpactFeel ImpactFeel;
+	UPROPERTY(EditAnywhere, Category = "Strike|Type") FGameplayTag StrikeTag;
 	
 	// Tree branching: each row points to its own next row per button.
 	// Empty = this branch has no continuation for that input; the chain ends here.
@@ -106,6 +111,8 @@ struct FCombatImpactEvent
 	UPROPERTY(BlueprintReadOnly) FVector ImpactPoint = FVector::ZeroVector;
 	UPROPERTY(BlueprintReadOnly) FCombatImpactFeel ImpactFeel;
 	UPROPERTY(BlueprintReadOnly) FHitResolution OutCome;
+	UPROPERTY(BlueprintReadOnly) FGameplayTag TypeStrikeTag;
+	UPROPERTY(BlueprintReadOnly) uint8 SurfaceType = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -119,4 +126,21 @@ struct FCombatStrikePayload
 	UPROPERTY(BlueprintReadOnly) FCombatImpactFeel ImpactFeel;
 	UPROPERTY(BlueprintReadOnly) TSubclassOf<UGameplayEffect> HPEffectClass;
 	UPROPERTY(BlueprintReadOnly) TSubclassOf<UGameplayEffect> STAEffectClass;
+	UPROPERTY(BlueprintReadOnly) FGameplayTag StrikeTag;
+	// A bullet. A guard held at the parry moment blocks it instead of parrying.
+	UPROPERTY(BlueprintReadOnly) bool bRanged = false;
+};
+
+
+enum class ECombatTeam : uint8 { Player = 1, Enemy = 2 };
+
+
+USTRUCT(BlueprintType)
+struct FCombatFeedbackRow : public FTableRowBase
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere) FGameplayTag WeaponTag;
+	UPROPERTY(EditAnywhere) EHitOutcome FeedbackEvent = EHitOutcome::Unblocked;
+	UPROPERTY(EditAnywhere) TSoftObjectPtr<UNiagaraSystem> Impact;
+	UPROPERTY(EditAnywhere) TSoftObjectPtr<USoundBase> Sound; 
 };

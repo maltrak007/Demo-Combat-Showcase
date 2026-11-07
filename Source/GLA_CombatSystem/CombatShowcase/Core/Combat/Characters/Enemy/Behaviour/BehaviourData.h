@@ -23,8 +23,7 @@ enum class EEnemyAIState : uint8
 	Patrol UMETA(DisplayName = "Patrol"),
 	Chase UMETA(DisplayName = "Chase"),
 	Leashing UMETA(DisplayName = "Leashing"),
-	MeleeCombat UMETA(DisplayName = "Melee Combat"),
-	RangedCombat UMETA(DisplayName = "Ranged Combat")
+	Combat UMETA(DisplayName = "Combat")
 };
 
 USTRUCT(BlueprintType)
@@ -38,6 +37,7 @@ struct FEnemyPerceptionSettings
 	// Half-angle around the enemy's facing. 180 sees everything around it, which suits a lane brawler.
 	UPROPERTY(EditAnywhere, meta = (ClampMin = "1.0", ClampMax = "180.0")) float PeripheralVisionAngle = 70.f;
 	UPROPERTY(EditAnywhere, meta = (ClampMin = "0.0")) float StimulusMaxAge = 8.f;
+	UPROPERTY(EditAnywhere, meta = (ClampMin = "0.0")) float TargetMemorySeconds = 6.f;
 };
 
 /**
@@ -53,4 +53,13 @@ namespace EnemyBBKeys
 	static const FName AIState = TEXT("AIState");
 	static const FName MoveToLocation = TEXT("MoveToLocation");
 	static const FName HomeLocation = TEXT("HomeLocation");
+
+	// Written by BTService_RequestAttackToken (the combat director).
+	static const FName HasAttackToken = TEXT("HasAttackToken");     // Bool
+	static const FName AttackSideSign = TEXT("AttackSideSign");     // Float: -1 left, +1 right, 0 ranged
+	static const FName AttackLocation = TEXT("AttackLocation");     // Vector: the melee slot beside the target
+
+	// Written by the same service from the enemy's behaviour row. Optional: feed them to an EQS query as named parameters.
+	static const FName PreferredRangeMin = TEXT("PreferredRangeMin"); // Float
+	static const FName PreferredRangeMax = TEXT("PreferredRangeMax"); // Float
 }

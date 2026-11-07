@@ -32,6 +32,11 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* RollAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* FinisherAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* BlockDirectionAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* EquipWeaponAction;
+	// Hold to aim a drawn ranged weapon (a Digital bool action).
+	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* AimAction;
+	// Moves the aim up and down while aiming (an Axis1D action: W/S, the stick, or the mouse with a scale).
+	UPROPERTY(EditDefaultsOnly, Category = "Input") UInputAction* AimPitchAction;
 	
 	UPROPERTY()
 	TObjectPtr<APlayerCombatCharacter> ControlledCharacter;
@@ -44,4 +49,8 @@ private:
 	void HandleRoll(const FInputActionValue& Value);
 	void HandleFinisher(const FInputActionValue&);
 	void HandleBlockDirection(const FInputActionValue& Value);
+	void HandleEquipWeapon(const FInputActionValue& Value);
+	void HandleAimStart(const FInputActionValue& Value);
+	void HandleAimStop(const FInputActionValue& Value);
+	void HandleAimPitch(const FInputActionValue& Value);
 };

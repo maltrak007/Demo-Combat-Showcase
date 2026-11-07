@@ -10,6 +10,7 @@ class UContextualAnimSceneActorComponent;
 class UContextualAnimSceneAsset;
 class ABaseCombatCharacter;
 class UGameplayEffect;
+class UPDT_Weapon;
 /**
  * 
  */
@@ -20,9 +21,16 @@ class GLA_COMBATSYSTEM_API UGA_Finisher : public UCombatGameplayAbility
 	public:
 	UGA_Finisher();
 
+	// Only while the weapon in use has at least one finisher scene.
+	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+	                                const FGameplayTagContainer* SourceTags = nullptr,
+	                                const FGameplayTagContainer* TargetTags = nullptr,
+	                                FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+
 protected:
-	// Front executions only, so a flat list is enough.
-	UPROPERTY(EditDefaultsOnly, Category = "Finisher") TArray<TObjectPtr<UContextualAnimSceneAsset>> ExecutionScenes;
+	// DEPRECATED and no longer read: the scenes live on each weapon asset now (Item|Finisher). Kept only so the values
+	// already set on a Blueprint aren't lost. Copy them into the weapons, then clear this list.
+	UPROPERTY(EditDefaultsOnly, Category = "Finisher|Deprecated") TArray<TObjectPtr<UContextualAnimSceneAsset>> ExecutionScenes;
 	UPROPERTY(EditDefaultsOnly, Category = "Finisher") FName AttackerRole = "Attacker"; // must match the role names in the scene asset
 	UPROPERTY(EditDefaultsOnly, Category = "Finisher") FName VictimRole = "Victim";
 	UPROPERTY(EditDefaultsOnly, Category = "Finisher") TSubclassOf<UGameplayEffect> DamageEffectClass;
@@ -47,7 +55,8 @@ private:
 	void ScanForPrompt();
 	void SetCanExecuteTag(bool bShouldHold);
 
-	UContextualAnimSceneAsset* PickScene();
+	// Picks one of the weapon's scenes at random, avoiding the one used last time. Null when there is none to play.
+	UContextualAnimSceneAsset* PickScene(const UPDT_Weapon* Weapon);
 	void ProtectVictim(ABaseCombatCharacter* InVictim);
 	void ReleaseVictim();
 	void KillVictim(ABaseCombatCharacter* InVictim);
@@ -60,5 +69,7 @@ private:
 	bool bVictimProtected = false;
 	bool bPlayerInvincibleHeld = false;
 	bool bSceneStarted = false;
+	// The index belongs to one weapon's list, so it is forgotten when the weapon in use changes.
 	int32 LastSceneIndex = INDEX_NONE;
+	TWeakObjectPtr<const UPDT_Weapon> LastSceneWeapon;
 };

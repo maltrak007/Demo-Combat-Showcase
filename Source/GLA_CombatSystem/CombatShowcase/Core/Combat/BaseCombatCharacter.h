@@ -9,14 +9,17 @@
 #include "GameFramework/Character.h"
 #include "BaseCombatCharacter.generated.h"
 
+class UWeaponComponent;
 class UContextualAnimSceneActorComponent;
 class UMotionWarpingComponent;
 class UWidgetComponent;
-class UCombatStatsComponent;
+class UCombatComboComponent;
 class UCombatFeedbackComponent;
 class UGameplayEffect;
 class UGameplayAbility;
 class UCombatAttributeSet;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAimingChanged, bool, bAiming);
 
 UCLASS()
 class GLA_COMBATSYSTEM_API ABaseCombatCharacter : public ACharacter, public IAbilitySystemInterface, public IGenericTeamAgentInterface
@@ -41,22 +44,39 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Combat")
 	float GetStaminaPercent() const;
 
+	void FaceDirection(float SignedDirection);
 	bool IsMovementLocked() const;
 	bool IsExecutable() const;
 
+	// WEAPON RELATED
+	UMeshComponent* GetEquippedWeaponMesh() const { return EquippedWeaponMesh; }
+	void SetEquippedWeaponMesh(UMeshComponent* NewWeaponMesh) { EquippedWeaponMesh = NewWeaponMesh; }
+	
 	// STAMINA RELATED FUNCTIONS 
 	void ConsumeStamina(float Amount);
 
 	void GrantStaminaBurst(float Amount);
-
-	// WEAPON RELATED
-	UStaticMeshComponent* GetEquippedWeaponMesh() const { return EquippedWeaponMesh; }
-
-	void SetEquippedWeaponMesh(UStaticMeshComponent* NewWeaponMesh) { EquippedWeaponMesh = NewWeaponMesh; }
-
+	
 	UCombatFeedbackComponent* GetFeedbackComponent() const { return FeedbackComponent; }
 
-	UCombatStatsComponent* GetCombatStatsComponent() const { return CombatStatsComponent; }
+	UCombatComboComponent* GetCombatComboComponent() const { return CombatComboComponent; }
+	
+	UWeaponComponent* GetWeaponComponent() const { return WeaponComponent; }
+
+	// AIMING with a ranged weapon. GA_Aim owns the state, and the shot ability and the animation blueprint read it here.
+	UFUNCTION(BlueprintPure, Category = "Combat|Aim")
+	bool IsAiming() const { return bAiming; }
+
+	// Degrees above (positive) or below (negative) the horizontal. Zero when not aiming.
+	UFUNCTION(BlueprintPure, Category = "Combat|Aim")
+	float GetAimPitch() const { return AimPitchDegrees; }
+
+	void SetAiming(bool bNewAiming);
+	void SetAimPitch(float NewPitchDegrees) { AimPitchDegrees = NewPitchDegrees; }
+
+	// Fires when aiming starts or ends. The animation blueprint binds it to switch to the aim pose.
+	UPROPERTY(BlueprintAssignable, Category = "Combat|Aim")
+	FOnAimingChanged OnAimingChanged;
 	
 	virtual FGenericTeamId GetGenericTeamId() const override;
 	
@@ -77,17 +97,15 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
-
-	// Set by whatever equips a weapon later. Null = bare-handed. Not building the equip
-	// system itself here — this is just the seam it plugs into.
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	UStaticMeshComponent* EquippedWeaponMesh = nullptr;
+	TObjectPtr<UCombatFeedbackComponent> FeedbackComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	UCombatFeedbackComponent* FeedbackComponent;
-
+	TObjectPtr<UCombatComboComponent> CombatComboComponent;	
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	TObjectPtr<UCombatStatsComponent> CombatStatsComponent;
+	TObjectPtr<UWeaponComponent> WeaponComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UWidgetComponent> StatWidgetComponent;
@@ -102,9 +120,10 @@ protected:
 	FGenericTeamId TeamId;
 	
 	virtual void PossessedBy(AController* NewController) override;
-
-	void FaceDirection(float SignedDirection);
-
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UMeshComponent> EquippedWeaponMesh = nullptr;
+	
 	UFUNCTION()
 	void HandleHealthChanged(float NewHealth, float DamageAmount, bool bIsDead);
 
@@ -142,4 +161,7 @@ private:
 
 	void UpdateExecutableState();
 	bool bExecutableTagHeld = false;
+
+	bool bAiming = false;
+	float AimPitchDegrees = 0.f;
 };

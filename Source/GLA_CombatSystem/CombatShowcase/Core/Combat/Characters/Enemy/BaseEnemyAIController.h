@@ -29,27 +29,32 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	
+
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Behavior")
 	TMap<FGameplayTag, TObjectPtr<UBehaviorTree>> DefaultSubtrees;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Behavior")
 	TObjectPtr<UBehaviorTree> BehaviorTreeAsset;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Perception")
 	FEnemyPerceptionSettings DefaultPerception;
 
 private:
-	
 	void OnExecutionTagChanged(FGameplayTag Tag, int32 NewCount);
-	
+
 	bool ValidateBlackboardKeys() const;
-	
+
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+	
+	void ForgetTarget();
+	
+	FTimerHandle ForgetTargetHandle;
+	
+	float TargetMemorySeconds = 6.f;
 	
 	UPROPERTY()
 	TObjectPtr<UAISenseConfig_Sight> SightConfig;

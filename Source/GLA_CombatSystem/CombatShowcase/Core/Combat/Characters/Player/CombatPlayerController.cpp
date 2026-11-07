@@ -2,10 +2,10 @@
 
 
 #include "CombatPlayerController.h"
-
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "PlayerCombatCharacter.h"
+#include "Engine/LocalPlayer.h"
 
 void ACombatPlayerController::BeginPlay()
 {
@@ -27,6 +27,17 @@ void ACombatPlayerController::SetupInputComponent()
 		EIC->BindAction(RollAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleRoll);
 		EIC->BindAction(FinisherAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleFinisher);
 		EIC->BindAction(BlockDirectionAction, ETriggerEvent::Triggered, this, &ACombatPlayerController::HandleBlockDirection);
+		EIC->BindAction(EquipWeaponAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleEquipWeapon);
+		// Guarded, so the project still runs before the two aim input assets are created and assigned.
+		if (AimAction)
+		{
+			EIC->BindAction(AimAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleAimStart);
+			EIC->BindAction(AimAction, ETriggerEvent::Completed, this, &ACombatPlayerController::HandleAimStop);
+		}
+		if (AimPitchAction)
+		{
+			EIC->BindAction(AimPitchAction, ETriggerEvent::Triggered, this, &ACombatPlayerController::HandleAimPitch);
+		}
 	}
 }
 
@@ -44,3 +55,7 @@ void ACombatPlayerController::HandleBlockStop(const FInputActionValue&)        {
 void ACombatPlayerController::HandleRoll(const FInputActionValue&)             { if (ControlledCharacter) ControlledCharacter->Roll(); }
 void ACombatPlayerController::HandleFinisher(const FInputActionValue&)         { if (ControlledCharacter) ControlledCharacter->Finisher(); }
 void ACombatPlayerController::HandleBlockDirection(const FInputActionValue& Value) { if (ControlledCharacter) ControlledCharacter->UpdateBlockDirection(Value.Get<float>()); }
+void ACombatPlayerController::HandleAimStart(const FInputActionValue&)   { if (ControlledCharacter) ControlledCharacter->StartAim(); }
+void ACombatPlayerController::HandleAimStop(const FInputActionValue&)    { if (ControlledCharacter) ControlledCharacter->StopAim(); }
+void ACombatPlayerController::HandleAimPitch(const FInputActionValue& Value) { if (ControlledCharacter) ControlledCharacter->AddAimInput(Value.Get<float>()); }
+void ACombatPlayerController::HandleEquipWeapon(const FInputActionValue&) {if (ControlledCharacter) {ControlledCharacter->EquipWeapon(); } }

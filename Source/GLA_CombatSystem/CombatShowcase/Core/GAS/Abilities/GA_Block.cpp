@@ -7,6 +7,7 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "CombatShowcase/Core/Combat/Characters/Player/PlayerCombatCharacter.h"
+#include "CombatShowcase/Core/Combat/Components/WeaponComponent.h"
 #include "CombatShowcase/Core/GAS/CombatAttributeSet.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 
@@ -103,10 +104,26 @@ void UGA_Block::PlayGuardMontage(bool bUp)
 	StartGuardMontage(bUp);
 }
 
+UAnimMontage* UGA_Block::ResolveGuardMontage(bool bUp) const
+{
+	const ABaseCombatCharacter* Avatar = Cast<ABaseCombatCharacter>(GetAvatarActorFromActorInfo());
+	const UWeaponComponent* Weapons = Avatar ? Avatar->GetWeaponComponent() : nullptr;
+	if (UAnimMontage* FromWeapon = Weapons ? Weapons->ResolveGuardMontage(bUp) : nullptr)
+	{
+		return FromWeapon;
+	}
+	return bUp ? BlockToUpMontage : BlockToDownMontage;
+}
+
 void UGA_Block::StartGuardMontage(bool bUp, FName StartSection)
 {
-	UAnimMontage* MontageToPlay = bUp ? BlockToUpMontage : BlockToDownMontage;
-	if (!MontageToPlay) return;
+	UAnimMontage* MontageToPlay = ResolveGuardMontage(bUp);
+	if (!MontageToPlay)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no guard-%s montage on the weapon in use, the baseline, or this ability. The guard works but plays no animation."),
+			*GetName(), bUp ? TEXT("up") : TEXT("down"));
+		return;
+	}
 	
 	if (StartSection != NAME_None && MontageToPlay->GetSectionIndex(StartSection) == INDEX_NONE)
 	{

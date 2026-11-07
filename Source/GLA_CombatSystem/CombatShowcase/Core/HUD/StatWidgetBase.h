@@ -23,7 +23,23 @@ public:
 
 protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Stats")
-	void OnStatsReady(); 
+	void OnStatsReady();
+
+	// An attacker is winding up. Play the indicator animation over Duration seconds, so it lands on the moment of the shot.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Stats")
+	void OnShotTelegraphStarted(float Duration);
+
+	// The wind-up is over, because the shot was fired or because it was interrupted. Hide the indicator.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Stats")
+	void OnShotTelegraphEnded();
+
+	virtual void NativeDestruct() override;
+
+private:
+	UFUNCTION() void HandleTelegraphStarted(float Duration);
+	UFUNCTION() void HandleTelegraphEnded();
+
+protected: 
 	
 	
 };

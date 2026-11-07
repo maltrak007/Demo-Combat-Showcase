@@ -20,7 +20,7 @@ bool UAbilityTask_MultiBoneHitTrace::ResolveHitboxLocation(const FCombatHitboxDe
     if (Box.Source == ECombatHitboxSource::WeaponSocket)
     {
         ABaseCombatCharacter* Character = Cast<ABaseCombatCharacter>(Avatar);
-        UStaticMeshComponent* Weapon = Character ? Character->GetEquippedWeaponMesh() : nullptr;
+        UMeshComponent* Weapon = Character ? Character->GetEquippedWeaponMesh() : nullptr;
         if (!Weapon || !Weapon->DoesSocketExist(Box.Bone))
         {
             UE_LOG(LogTemp, Warning, TEXT("HitboxTrace: weapon-socket hitbox '%s' unresolved on %s — skipping."), *Box.Bone.ToString(), *Avatar->GetName());
@@ -29,8 +29,9 @@ bool UAbilityTask_MultiBoneHitTrace::ResolveHitboxLocation(const FCombatHitboxDe
         OutLocation = Weapon->GetSocketLocation(Box.Bone);
         return true;
     }
-
-    USkeletalMeshComponent* Mesh = Avatar->FindComponentByClass<USkeletalMeshComponent>();
+    
+    ABaseCombatCharacter* Character = Cast<ABaseCombatCharacter>(Avatar);
+    USkeletalMeshComponent* Mesh = Character ? Character->GetMesh() : nullptr;
     if (!Mesh || !Mesh->DoesSocketExist(Box.Bone))
     {
         UE_LOG(LogTemp, Warning, TEXT("HitboxTrace: bare-bone hitbox '%s' unresolved on %s — skipping."), *Box.Bone.ToString(), *Avatar->GetName());
@@ -43,6 +44,7 @@ bool UAbilityTask_MultiBoneHitTrace::ResolveHitboxLocation(const FCombatHitboxDe
 void UAbilityTask_MultiBoneHitTrace::HandleHitboxOpen(const FGameplayEventData* EventPayload)
 {
     bWindowOpen = true;
+    bAnyHitThisWindow = false;
     HitGroupsConsumed.Reset();
     LastBonePositions.Reset();
 
@@ -59,7 +61,9 @@ void UAbilityTask_MultiBoneHitTrace::HandleHitboxOpen(const FGameplayEventData* 
 
 void UAbilityTask_MultiBoneHitTrace::HandleHitboxClose(const FGameplayEventData* EventPayload)
 {
+    const bool bWasOpen = bWindowOpen;
     bWindowOpen = false;
+    if (bWasOpen) OnWindowClosed.Broadcast(bAnyHitThisWindow);
     EndTask();
 }
 
@@ -95,7 +99,8 @@ void UAbilityTask_MultiBoneHitTrace::PerformTrace()
 
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(Avatar);
-
+    Params.bReturnPhysicalMaterial = true;
+    
     struct FPendingHit { const FCombatHitboxDef* Box; FHitResult Hit; };
     TMap<AActor*, FPendingHit> BestHitThisFrame;
 
@@ -158,6 +163,7 @@ void UAbilityTask_MultiBoneHitTrace::PerformTrace()
         }
 
         OnMultiHitDetected.Broadcast(Pair.Key, Outcome);
+        if (Outcome != EHitOutcome::Invincible) bAnyHitThisWindow = true;
     }
 }
 

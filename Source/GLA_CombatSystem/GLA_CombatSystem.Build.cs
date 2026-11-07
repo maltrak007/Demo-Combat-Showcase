@@ -25,7 +25,10 @@ public class GLA_CombatSystem : ModuleRules
 			"MotionWarping",
 			"GameplayCameras",
 			"StateTreeModule",
-			"ContextualAnimation"
+			"ContextualAnimation",
+			"NavigationSystem",
+			"Niagara",
+			"DeveloperSettings"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

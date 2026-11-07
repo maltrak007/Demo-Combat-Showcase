@@ -7,7 +7,7 @@
 #include "CombatShowcase/Core/Combat/BaseCombatCharacter.h"
 #include "PlayerCombatCharacter.generated.h"
 
-class UCombatStatsComponent;
+class UCombatComboComponent;
 
 UCLASS()
 class GLA_COMBATSYSTEM_API APlayerCombatCharacter : public ABaseCombatCharacter
@@ -31,6 +31,12 @@ public:
 	void StopBlock();
 	void Finisher();
 	void Roll();
+	void EquipWeapon();
+
+	// Aiming a drawn ranged weapon: hold to aim, and the axis moves the aim up and down within the weapon's limit.
+	void StartAim();
+	void StopAim();
+	void AddAimInput(float AxisValue);
 	
 	void SendCombatEvent(const FGameplayTag& EventTag);
 
@@ -43,6 +49,10 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	// How fast a full push on the aim axis moves the aim, in degrees per second.
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Aim", meta = (ClampMin = "1.0"))
+	float AimPitchSpeed = 90.f;
 
 private:
 	float LastRawBlockAxisValue = 0.f;

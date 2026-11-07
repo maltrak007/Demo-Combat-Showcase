@@ -63,6 +63,7 @@ void UGA_Evade::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 	// Leaving the guard is part of evading. Block cleans up its own tags in its EndAbility.
 	FGameplayTagContainer BlockTags;
 	BlockTags.AddTag(CombatTags::Ability_Type_Block);
+	BlockTags.AddTag(CombatTags::Ability_Type_Aim); // rolling also lets go of the aim
 	ASC->CancelAbilities(&BlockTags, nullptr, this);
 
 	// Roll goes the way the character already faces (Roll() faced the input direction),

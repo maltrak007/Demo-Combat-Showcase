@@ -4,9 +4,11 @@
 #include "GA_HitReaction.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "CombatShowcase/Core/Combat/Data/CombatData.h"
+#include "GameFramework/RootMotionSource.h"
 
 UGA_HitReaction::UGA_HitReaction()
 {
@@ -25,7 +27,10 @@ UGA_HitReaction::UGA_HitReaction()
 	AddTrigger(CombatTags::Event_Combat_HitReact_GuardBreak);
 }
 
-void UGA_HitReaction::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+void UGA_HitReaction::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
+                                      const FGameplayAbilityActorInfo* ActorInfo,
+                                      const FGameplayAbilityActivationInfo ActivationInfo,
+                                      const FGameplayEventData* TriggerEventData)
 {
 	if (!HasValidAnimInstance(ActorInfo) || !TriggerEventData)
 	{
@@ -40,7 +45,8 @@ void UGA_HitReaction::ActivateAbility(const FGameplayAbilitySpecHandle Handle, c
 
 	if (EventTag == CombatTags::Event_Combat_HitReact_Unblocked)
 	{
-		const EHitReactionDirection Direction = static_cast<EHitReactionDirection>(FMath::RoundToInt(TriggerEventData->EventMagnitude));
+		const EHitReactionDirection Direction = static_cast<EHitReactionDirection>(FMath::RoundToInt(
+			TriggerEventData->EventMagnitude));
 
 		if (UAnimMontage* const* Found = UnblockedReactions.Find(Direction))
 		{
@@ -56,9 +62,11 @@ void UGA_HitReaction::ActivateAbility(const FGameplayAbilitySpecHandle Handle, c
 	}
 	else if (EventTag == CombatTags::Event_Combat_HitReact_Blocked)
 	{
-		if (GuardHitReactions.Num() > 0) MontageToPlay = GuardHitReactions[FMath::RandRange(0, GuardHitReactions.Num() - 1)];
+		if (GuardHitReactions.Num() > 0) MontageToPlay = GuardHitReactions[FMath::RandRange(
+			0, GuardHitReactions.Num() - 1)];
 	}
-	else if (EventTag == CombatTags::Event_Combat_HitReact_Parried || EventTag == CombatTags::Event_Combat_HitReact_GuardBreak)
+	else if (EventTag == CombatTags::Event_Combat_HitReact_Parried || EventTag ==
+		CombatTags::Event_Combat_HitReact_GuardBreak)
 	{
 		MontageToPlay = ParryVictimReaction; // the guard-break stagger deliberately reuses this animation
 	}
@@ -71,7 +79,7 @@ void UGA_HitReaction::ActivateAbility(const FGameplayAbilitySpecHandle Handle, c
 	if (!MontageToPlay)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s: no reaction montage resolved for %s. Check the montages on the Blueprint."),
-			*GetName(), *EventTag.ToString());
+		       *GetName(), *EventTag.ToString());
 		if (bIsParrySuccess)
 		{
 			HandleParrySuccessCompleted(); // keep the chain alive while the montage is still missing
@@ -82,7 +90,7 @@ void UGA_HitReaction::ActivateAbility(const FGameplayAbilitySpecHandle Handle, c
 	}
 
 	UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-	this, NAME_None, MontageToPlay, 1.f, NAME_None, true,  1.f,  0.f,  true);
+		this, NAME_None, MontageToPlay, 1.f, NAME_None, true, 1.f, 0.f, true);
 	Task->OnBlendOut.AddDynamic(this, &UGA_HitReaction::HandleBlendOut);
 	if (bIsParrySuccess)
 	{
@@ -108,10 +116,19 @@ void UGA_HitReaction::HandleBlendOut()
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (!Avatar) return;
 
+
+	// GIVE THE PLAYER OR THE ENEMY THE CHANCE TO DODGE / BLOCK AFTER A HIT 
+	if (ParriedAttacker.IsValid())
+	{
+		return;
+	}
+
 	FGameplayEventData Data;
 	Data.EventTag = CombatTags::Event_Combat_ReactionFinished;
 	Data.Instigator = Avatar;
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Avatar, Data.EventTag, Data);
+
+	HandleDone();
 }
 
 void UGA_HitReaction::HandleParrySuccessCompleted()
@@ -119,7 +136,7 @@ void UGA_HitReaction::HandleParrySuccessCompleted()
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	const AActor* Target = ParriedAttacker.Get();
 	ParriedAttacker.Reset();
-	
+
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 
 	if (!Avatar) return;

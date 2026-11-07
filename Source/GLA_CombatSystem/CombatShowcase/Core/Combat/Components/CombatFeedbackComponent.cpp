@@ -5,18 +5,22 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
-#include "CombatStatsComponent.h"
+#include "CombatComboComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "CombatShowcase/Core/Combat/BaseCombatCharacter.h"
 #include "CombatShowcase/Core/Combat/Data/CombatData.h"
+#include "CombatShowcase/Core/Combat/Data/CombatFeedbackProfile.h"
+#include "CombatShowcase/Core/Combat/Data/CombatFeedbackSettings.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
+#include "Components/AudioComponent.h"
 #include "GameFramework/Character.h"
-#include "Kismet/GameplayStatics.h" 
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values for this component's properties
 UCombatFeedbackComponent::UCombatFeedbackComponent()
 {
-
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
@@ -24,7 +28,7 @@ UCombatFeedbackComponent::UCombatFeedbackComponent()
 void UCombatFeedbackComponent::ReactToImpact(const FCombatImpactEvent& Event)
 {
 	ApplyHitstop(Event.ImpactFeel.HitstopDuration);
-	if (Event.Target == GetOwner()) 
+	if (Event.Target == GetOwner())
 	{
 		LastKnockbackVelocity = Event.KnockbackVelocity;
 		ApplyKnockback(Event.KnockbackVelocity);
@@ -37,7 +41,7 @@ EHitOutcome UCombatFeedbackComponent::ResolveIncomingHit(EStrikeDirection Strike
 	IAbilitySystemInterface* ASCOwner = Cast<IAbilitySystemInterface>(GetOwner());
 	UAbilitySystemComponent* ASC = ASCOwner ? ASCOwner->GetAbilitySystemComponent() : nullptr;
 	if (!ASC) return EHitOutcome::Unblocked;
-	
+
 	if (ASC->HasMatchingGameplayTag(CombatTags::State_Combat_Invincible))
 		return EHitOutcome::Invincible;
 
@@ -45,23 +49,35 @@ EHitOutcome UCombatFeedbackComponent::ResolveIncomingHit(EStrikeDirection Strike
 		return EHitOutcome::Unblocked;
 
 	const FGameplayTag& GuardDirectionTag = (StrikeDirection == EStrikeDirection::Up)
-		? CombatTags::State_Blocking_DirectionUp
-		: CombatTags::State_Blocking_DirectionDown;
+		                                        ? CombatTags::State_Blocking_DirectionUp
+		                                        : CombatTags::State_Blocking_DirectionDown;
 
 	if (!ASC->HasMatchingGameplayTag(GuardDirectionTag))
 		return EHitOutcome::Unblocked;
 
 	return ASC->HasMatchingGameplayTag(CombatTags::State_Combat_ParryWindowOpen)
-		? EHitOutcome::Parried
-		: EHitOutcome::Blocked;
+		       ? EHitOutcome::Parried
+		       : EHitOutcome::Blocked;
 }
 
 FHitResolution UCombatFeedbackComponent::ResolveAndApplyHit(AActor* Instigator, const FHitResult& Hit,
-	const FCombatStrikePayload& Payload)
+                                                            const FCombatStrikePayload& Payload)
 {
 	FHitResolution Resolution;
 	Resolution.Outcome = ResolveIncomingHit(Payload.Direction);
+	if (Payload.bRanged && Resolution.Outcome == EHitOutcome::Parried)
+	{
+		Resolution.Outcome = EHitOutcome::Blocked; // a parry answers a swing, not a bullet
+	}
 
+	FCombatImpactEvent Event;
+	Event.Target = GetOwner();
+	Event.Instigator = Instigator;
+	Event.ImpactPoint = Hit.ImpactPoint;
+	Event.ImpactFeel = Payload.ImpactFeel;
+	Event.TypeStrikeTag = Payload.StrikeTag;
+	Event.SurfaceType = static_cast<uint8>(UGameplayStatics::GetSurfaceType(Hit));
+	
 	switch (Resolution.Outcome)
 	{
 	case EHitOutcome::Unblocked:
@@ -86,20 +102,21 @@ FHitResolution UCombatFeedbackComponent::ResolveAndApplyHit(AActor* Instigator, 
 		Resolution.FinalDamage = 0.f;
 		Resolution.FinalStaminaDamage = 0.f;
 		Resolution.bAppliesKnockback = false;
+		Event.ImpactFeel.HitstopDuration = 0.f;
+		Event.ImpactFeel.ShakeScale = 0.f;
+		break;
+	case EHitOutcome::Whiff:
 		break;
 	}
-
-	FCombatImpactEvent Event;
-	Event.Target = GetOwner();
-	Event.Instigator = Instigator;
-	Event.ImpactPoint = Hit.ImpactPoint;
-	Event.ImpactFeel = Payload.ImpactFeel;
+	
 	Event.OutCome = Resolution;
+
+	PlayFeedback(Resolution.Outcome, Event.TypeStrikeTag, Event.ImpactPoint, Event.SurfaceType);
 
 	const float DirSign = (GetOwner()->GetActorLocation().X >= Instigator->GetActorLocation().X) ? 1.f : -1.f;
 	Event.KnockbackVelocity = Resolution.bAppliesKnockback
-		? FVector(DirSign, 0.f, 0.f).GetSafeNormal() * Payload.ImpactFeel.KnockbackMagnitude
-		: FVector::ZeroVector;
+		                          ? FVector(DirSign, 0.f, 0.f).GetSafeNormal() * Payload.ImpactFeel.KnockbackMagnitude
+		                          : FVector::ZeroVector;
 
 	// Feel on both sides — same symmetric dispatch the Task used to do directly.
 	ReactToImpact(Event);
@@ -156,13 +173,16 @@ FHitResolution UCombatFeedbackComponent::ResolveAndApplyHit(AActor* Instigator, 
 
 	case EHitOutcome::Invincible:
 		break;
+	case EHitOutcome::Whiff:
+		break;
 	}
-	
+
 	DispatchHitReaction(Instigator, Resolution.Outcome, Payload.ReactionDirection);
 	return Resolution;
 }
 
-void UCombatFeedbackComponent::DispatchHitReaction(AActor* Instigator, EHitOutcome Outcome, EHitReactionDirection ReactionDirection)
+void UCombatFeedbackComponent::DispatchHitReaction(AActor* Instigator, EHitOutcome Outcome,
+                                                   EHitReactionDirection ReactionDirection)
 {
 	AActor* Owner = GetOwner();
 
@@ -170,7 +190,7 @@ void UCombatFeedbackComponent::DispatchHitReaction(AActor* Instigator, EHitOutco
 	{
 	case EHitOutcome::Unblocked:
 		SendReaction(Owner, Instigator, CombatTags::Event_Combat_HitReact_Unblocked,
-			static_cast<float>(static_cast<uint8>(ReactionDirection)), true, false);
+		             static_cast<float>(static_cast<uint8>(ReactionDirection)), true, true);
 		break;
 
 	case EHitOutcome::Blocked:
@@ -178,8 +198,10 @@ void UCombatFeedbackComponent::DispatchHitReaction(AActor* Instigator, EHitOutco
 			UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Owner);
 			const bool bGuardBroke = ASC && !ASC->HasMatchingGameplayTag(CombatTags::Ability_Type_Block);
 			SendReaction(Owner, Instigator,
-				bGuardBroke ? CombatTags::Event_Combat_HitReact_GuardBreak : CombatTags::Event_Combat_HitReact_Blocked,
-				0.f, bGuardBroke, false);
+			             bGuardBroke
+				             ? CombatTags::Event_Combat_HitReact_GuardBreak
+				             : CombatTags::Event_Combat_HitReact_Blocked,
+			             0.f, bGuardBroke, false);
 			break;
 		}
 
@@ -187,12 +209,14 @@ void UCombatFeedbackComponent::DispatchHitReaction(AActor* Instigator, EHitOutco
 		SendReaction(Instigator, Owner, CombatTags::Event_Combat_HitReact_Parried, 0.f, true, false);
 		if (ABaseCombatCharacter* Parried = Cast<ABaseCombatCharacter>(Instigator))
 		{
-			if (UCombatStatsComponent* Stats = Parried->GetCombatStatsComponent()) Stats->ResetCombo();
+			if (UCombatComboComponent* Stats = Parried->GetCombatComboComponent()) Stats->ResetCombo();
 		}
 		SendReaction(Owner, Instigator, CombatTags::Event_Combat_HitReact_ParrySuccess, 0.f, false, true);
 		break;
 
 	case EHitOutcome::Invincible:
+		break;
+	case EHitOutcome::Whiff:
 		break;
 	}
 }
@@ -201,7 +225,8 @@ void UCombatFeedbackComponent::ApplyHitstop(float Duration)
 {
 	if (Duration <= 0.f) return;
 	GetOwner()->CustomTimeDilation = 0.05f;
-	GetWorld()->GetTimerManager().SetTimer(HitstopTimerHandle, this, &UCombatFeedbackComponent::EndHitstop, Duration, false);
+	GetWorld()->GetTimerManager().SetTimer(HitstopTimerHandle, this, &UCombatFeedbackComponent::EndHitstop, Duration,
+	                                       false);
 	// Timer runs on unscaled world time — it isn't itself slowed by the dilation it just applied
 }
 
@@ -240,7 +265,23 @@ void UCombatFeedbackComponent::TriggerDeathSlowMo()
 	// Scaled by 1/DilationFactor — the timer itself runs at the dilated rate too,
 	// so without this it would take far longer than SlowMoRealDuration to fire.
 	const float AdjustedTimerDuration = SlowMoRealDuration * SlowMoDilationFactor;
-	World->GetTimerManager().SetTimer(SlowMoTimerHandle, this, &UCombatFeedbackComponent::EndSlowMo, AdjustedTimerDuration, false);
+	World->GetTimerManager().SetTimer(SlowMoTimerHandle, this, &UCombatFeedbackComponent::EndSlowMo,
+	                                  AdjustedTimerDuration, false);
+}
+
+void UCombatFeedbackComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	Profile = ProfileOverride
+		          ? ProfileOverride.Get()
+		          : GetDefault<UCombatFeedbackSettings>()->DefaultProfile.LoadSynchronous();
+	if (!Profile)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no feedback profile. Set one in Project Settings > Combat Feedback."),
+		       *GetNameSafe(GetOwner()));
+		return;
+	}
+	Profile->PreloadAll();
 }
 
 void UCombatFeedbackComponent::EndSlowMo()
@@ -252,23 +293,24 @@ void UCombatFeedbackComponent::EndSlowMo()
 }
 
 void UCombatFeedbackComponent::SendReaction(AActor* ReactingActor, AActor* OtherParty, const FGameplayTag& Tag,
-	float Magnitude, bool bCancelCombatAbilities, bool bCancelBlock)
+                                            float Magnitude, bool bCancelCombatAbilities, bool bCancelBlock)
 {
 	if (!ReactingActor) return;
 
 	if (ABaseCombatCharacter* ReactingChar = Cast<ABaseCombatCharacter>(ReactingActor))
 	{
-		if (ReactingChar->GetHealthPercent() <= 0.f) return; 
+		if (ReactingChar->GetHealthPercent() <= 0.f) return;
 	}
 
 	if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ReactingActor))
 	{
 		FGameplayTagContainer CancelTags;
-		CancelTags.AddTag(CombatTags::Ability_Type_HitReaction); 
+		CancelTags.AddTag(CombatTags::Ability_Type_HitReaction);
 		if (bCancelCombatAbilities)
 		{
 			CancelTags.AddTag(CombatTags::Ability_Type_Attack);
 			CancelTags.AddTag(CombatTags::Ability_Type_Evasion);
+			CancelTags.AddTag(CombatTags::Ability_Type_Aim); // a clean hit breaks the aim
 		}
 		if (bCancelBlock) CancelTags.AddTag(CombatTags::Ability_Type_Block);
 		ASC->CancelAbilities(&CancelTags);
@@ -277,6 +319,75 @@ void UCombatFeedbackComponent::SendReaction(AActor* ReactingActor, AActor* Other
 	FGameplayEventData Data;
 	Data.EventTag = Tag;
 	Data.EventMagnitude = Magnitude;
-	Data.Instigator = OtherParty; 
+	Data.Instigator = OtherParty;
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(ReactingActor, Tag, Data);
+}
+
+void UCombatFeedbackComponent::PlayFeedback(EHitOutcome Outcome, const FGameplayTag& WeaponTag, const FVector& Location,
+                                            uint8 Surface)
+{
+	if (!Profile) return;
+
+	if (const FCombatFeedbackRow* Row = Profile->Find(WeaponTag, Outcome))
+	{
+		if (UNiagaraSystem* Fx = Row->Impact.Get())
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Fx, Location);
+		}
+		if (USoundBase* Sound = Row->Sound.Get())
+		{
+			// The MetaSound owns the variation. The surface goes in as a parameter.
+			if (UAudioComponent* Audio = UGameplayStatics::SpawnSoundAtLocation(this, Sound, Location))
+			{
+				Audio->SetIntParameter(Profile->SurfaceParameter, Surface);
+			}
+		}
+	}
+	ApplyOutcomeOverlay(Outcome); // does nothing for outcomes with no overlay entry
+}
+
+void UCombatFeedbackComponent::BeginTelegraph(float Duration)
+{
+	OnTelegraphStarted.Broadcast(Duration);
+}
+
+void UCombatFeedbackComponent::EndTelegraph()
+{
+	OnTelegraphEnded.Broadcast();
+}
+
+void UCombatFeedbackComponent::PlayWhiff(const FGameplayTag& WeaponTag, const FVector& Location)
+{
+	PlayFeedback(EHitOutcome::Whiff, WeaponTag, Location, 0);
+}
+
+void UCombatFeedbackComponent::ApplyOutcomeOverlay(EHitOutcome Outcome)
+{
+	const ACharacter* Character = Cast<ACharacter>(GetOwner());
+	UMeshComponent* Mesh = Character ? Character->GetMesh() : nullptr;
+	const FOutcomeOverlay* Style = Profile ? Profile->Overlays.Find(Outcome) : nullptr;
+	UMaterialInterface* Parent = Profile ? Profile->OverlayMaterial.Get() : nullptr;
+	if (!Mesh || !Style || !Parent) return;
+
+	if (!OverlayMID) OverlayMID = UMaterialInstanceDynamic::Create(Parent, this);
+	OverlayMID->SetVectorParameterValue(Profile->ColorParameter, Style->Color);
+	OverlayMID->SetScalarParameterValue(Profile->IntensityParameter, Style->Intensity);
+
+	UMaterialInterface* Current = Mesh->GetOverlayMaterial(false, 0);
+	if (Current != OverlayMID) SavedOverlay = Current;
+	Mesh->SetOverlayMaterial(OverlayMID, false, 0);
+	OverlayMesh = Mesh;
+
+	GetWorld()->GetTimerManager().SetTimer(OverlayTimer, this, &UCombatFeedbackComponent::ClearOutcomeOverlay,
+	                                       Style->Duration, false);
+}
+
+void UCombatFeedbackComponent::ClearOutcomeOverlay()
+{
+	if (UMeshComponent* Mesh = OverlayMesh.Get())
+	{
+		if (Mesh->GetOverlayMaterial(false, 0) == OverlayMID) Mesh->SetOverlayMaterial(SavedOverlay, false, 0);
+	}
+	SavedOverlay = nullptr;
+	OverlayMesh.Reset();
 }

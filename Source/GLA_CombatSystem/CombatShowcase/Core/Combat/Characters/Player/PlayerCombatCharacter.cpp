@@ -6,8 +6,10 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayTagContainer.h"
 #include "Abilities/GameplayAbilityTypes.h"
-#include "CombatShowcase/Core/Combat/Characters/Enemy/Behaviour/CombatData.h"
-#include "CombatShowcase/Core/Combat/Components/CombatStatsComponent.h"
+#include "CombatShowcase/Core/Combat/Data/CombatData.h"
+#include "CombatShowcase/Core/Combat/Components/CombatComboComponent.h"
+#include "CombatShowcase/Core/Combat/Components/WeaponComponent.h"
+#include "CombatShowcase/Core/Combat/Data/PDT_Weapon.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 
 // Sets default values
@@ -71,6 +73,27 @@ void APlayerCombatCharacter::Roll()
 	}
 }
 
+void APlayerCombatCharacter::StartAim() { SendCombatEvent(CombatTags::Event_Ability_Aim); }
+
+void APlayerCombatCharacter::StopAim()
+{
+	FGameplayTagContainer AimTags;
+	AimTags.AddTag(CombatTags::Ability_Type_Aim);
+	AbilitySystemComponent->CancelAbilities(&AimTags);
+}
+
+void APlayerCombatCharacter::AddAimInput(float AxisValue)
+{
+	if (!IsAiming() || FMath::IsNearlyZero(AxisValue)) return;
+
+	// The weapon decides how far the aim can go up or down.
+	const FRangedWeaponSpec* Spec = GetWeaponComponent() ? GetWeaponComponent()->GetRangedSpec() : nullptr;
+	const float Limit = Spec ? Spec->MaxAimAngle : 45.f;
+	SetAimPitch(FMath::Clamp(GetAimPitch() + AxisValue * AimPitchSpeed * GetWorld()->GetDeltaSeconds(), -Limit, Limit));
+}
+
+void APlayerCombatCharacter::EquipWeapon() {SendCombatEvent(CombatTags::Event_Ability_EquipWeapon);}
+
 void APlayerCombatCharacter::SendCombatEvent(const FGameplayTag& EventTag)
 {
 	FGameplayEventData EventData;
@@ -89,20 +112,20 @@ void APlayerCombatCharacter::TryAttack(const FGameplayTag& AttackEventTag)
 	}
 	if (AbilitySystemComponent->HasMatchingGameplayTag(CombatTags::Event_Combat_ComboWindowOpen))
 	{
-		GetCombatStatsComponent()->RequestComboContinuation(AttackEventTag);
+		GetCombatComboComponent()->RequestComboContinuation(AttackEventTag);
 	}
 }
 
 void APlayerCombatCharacter::TryConsumeComboRequest()
 {
-	const FGameplayTag RequestedTag = GetCombatStatsComponent()->ConsumeComboRequest();
+	const FGameplayTag RequestedTag = GetCombatComboComponent()->ConsumeComboRequest();
 	if (!RequestedTag.IsValid()) return; // HandleMontageCompleted resets when the montage naturally ends
 
 	const bool bHeavyRequested = (RequestedTag == CombatTags::Event_Ability_HeavyAttack);
-	const FName NextRow = GetCombatStatsComponent()->ResolveContinuation(bHeavyRequested);
+	const FName NextRow = GetCombatComboComponent()->ResolveContinuation(bHeavyRequested);
 	if (NextRow.IsNone()) return; // this branch has no continuation for the button pressed
 
-	GetCombatStatsComponent()->AdvanceCombo(NextRow);
+	GetCombatComboComponent()->AdvanceCombo(NextRow);
 
 	FGameplayTagContainer AttackTags;
 	AttackTags.AddTag(CombatTags::Ability_Type_Attack);

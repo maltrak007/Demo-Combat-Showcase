@@ -8,7 +8,9 @@
 #include "ContextualAnimSceneAsset.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "CombatShowcase/Core/Combat/BaseCombatCharacter.h"
-#include "CombatShowcase/Core/Combat/Components/CombatStatsComponent.h"
+#include "CombatShowcase/Core/Combat/Components/CombatComboComponent.h"
+#include "CombatShowcase/Core/Combat/Components/WeaponComponent.h"
+#include "CombatShowcase/Core/Combat/Data/PDT_Weapon.h"
 #include "CombatShowcase/Core/GAS/CombatAttributeSet.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "Engine/OverlapResult.h"
@@ -20,15 +22,38 @@ static TAutoConsoleVariable<bool> CVarDrawFinisherRange(
 	ECVF_Cheat
 );
 
+namespace
+{
+	// The one definition of "what is equipped": the weapon in hand while drawn, the baseline otherwise.
+	const UPDT_Weapon* GetActiveWeaponOf(const AActor* Actor)
+	{
+		const ABaseCombatCharacter* Character = Cast<ABaseCombatCharacter>(Actor);
+		const UWeaponComponent* Weapons = Character ? Character->GetWeaponComponent() : nullptr;
+		return Weapons ? Weapons->GetActiveWeapon() : nullptr;
+	}
+}
+
 UGA_Finisher::UGA_Finisher()
 {
 	AbilityTags.AddTag(CombatTags::Ability_Type_Finisher);
 	ActivationOwnedTags.AddTag(CombatTags::State_Combat_MovementLocked);
+	// Marks the scene while it runs, so GA_EquipWeapon can refuse to swap the weapon in the middle of it.
+	ActivationOwnedTags.AddTag(CombatTags::Ability_Type_Finisher);
 
 	FAbilityTriggerData Trigger;
 	Trigger.TriggerTag = CombatTags::Event_Ability_Finisher;
 	Trigger.TriggerSource = EGameplayAbilityTriggerSource::GameplayEvent;
 	AbilityTriggers.Add(Trigger);
+}
+
+bool UGA_Finisher::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+                                      const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags,
+                                      FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)) return false;
+
+	const UPDT_Weapon* Active = GetActiveWeaponOf(ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr);
+	return Active && Active->HasFinishers();
 }
 
 // ---------- Targeting and prompt ----------
@@ -109,7 +134,9 @@ void UGA_Finisher::OnRemoveAbility(const FGameplayAbilityActorInfo* ActorInfo, c
 void UGA_Finisher::ScanForPrompt()
 {
 	ABaseCombatCharacter* Owner = ScanOwner.Get();
-	SetCanExecuteTag(Owner && FindTarget(Owner) != nullptr);
+	// The prompt follows the same rule as the press: no finisher on the weapon in use, no prompt.
+	const UPDT_Weapon* Active = GetActiveWeaponOf(Owner);
+	SetCanExecuteTag(Owner && Active && Active->HasFinishers() && FindTarget(Owner) != nullptr);
 }
 
 void UGA_Finisher::SetCanExecuteTag(bool bShouldHold)
@@ -125,16 +152,35 @@ void UGA_Finisher::SetCanExecuteTag(bool bShouldHold)
 
 // ---------- Execution ----------
 
-UContextualAnimSceneAsset* UGA_Finisher::PickScene()
+UContextualAnimSceneAsset* UGA_Finisher::PickScene(const UPDT_Weapon* Weapon)
 {
+	if (!Weapon) return nullptr;
+	const TArray<TSoftObjectPtr<UContextualAnimSceneAsset>>& Scenes = Weapon->GetFinisherScenes();
+
+	// A remembered index points into one weapon's list. A different weapon starts fresh.
+	if (LastSceneWeapon.Get() != Weapon)
+	{
+		LastSceneWeapon = Weapon;
+		LastSceneIndex = INDEX_NONE;
+	}
+
 	TArray<int32> Candidates;
-	for (int32 i = 0; i < ExecutionScenes.Num(); ++i)
-		if (ExecutionScenes[i]) Candidates.Add(i);
+	for (int32 i = 0; i < Scenes.Num(); ++i)
+		if (!Scenes[i].IsNull()) Candidates.Add(i);
 	if (Candidates.IsEmpty()) return nullptr;
 
-	if (Candidates.Num() > 1) Candidates.Remove(LastSceneIndex); 
-	LastSceneIndex = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
-	return ExecutionScenes[LastSceneIndex];
+	if (Candidates.Num() > 1) Candidates.Remove(LastSceneIndex);
+	const int32 Chosen = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
+
+	// Loaded now, at the moment of the execution, because the scene's animations aren't kept in memory with the weapon.
+	UContextualAnimSceneAsset* Scene = Scenes[Chosen].LoadSynchronous();
+	if (!Scene)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: finisher scene %d of %s failed to load."), *GetName(), Chosen, *GetNameSafe(Weapon));
+		return nullptr;
+	}
+	LastSceneIndex = Chosen;
+	return Scene;
 }
 
 void UGA_Finisher::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -143,7 +189,8 @@ void UGA_Finisher::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 
 	// Re-run here instead of trusting the prompt: the target can die or move between prompt and press.
 	ABaseCombatCharacter* Target = Player ? FindTarget(Player) : nullptr;
-	UContextualAnimSceneAsset* Scene = PickScene();
+	// The weapon in use right now decides the scene. Checked again here, since it can have changed since the prompt.
+	UContextualAnimSceneAsset* Scene = PickScene(GetActiveWeaponOf(Player));
 	UContextualAnimSceneActorComponent* PlayerComp = Player ? Player->FindComponentByClass<UContextualAnimSceneActorComponent>() : nullptr;
 
 	if (!Target || !Scene || !PlayerComp || !CommitAbility(Handle, ActorInfo, ActivationInfo))
@@ -159,9 +206,10 @@ void UGA_Finisher::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 	CancelTags.AddTag(CombatTags::Ability_Type_Block);
 	CancelTags.AddTag(CombatTags::Ability_Type_Attack);
 	CancelTags.AddTag(CombatTags::Ability_Type_Evasion);
+	CancelTags.AddTag(CombatTags::Ability_Type_Aim);
 	CancelTags.AddTag(CombatTags::Ability_Type_HitReaction);
 	ASC->CancelAbilities(&CancelTags, nullptr, this);
-	if (UCombatStatsComponent* Stats = Player->GetCombatStatsComponent())
+	if (UCombatComboComponent* Stats = Player->GetCombatComboComponent())
 	{
 		Stats->ResetCombo();
 		Stats->CacheContinuations(NAME_None, NAME_None);

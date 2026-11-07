@@ -9,6 +9,9 @@ namespace CombatTags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Ability_BackStep, "Event.Ability.BackStep");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Ability_Roll, "Event.Ability.Roll");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Ability_Finisher, "Event.Ability.Finisher");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Ability_EquipWeapon, "Event.Ability.EquipWeapon");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Ability_Reload, "Event.Ability.Reload");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Ability_Aim, "Event.Ability.Aim");
 	
 	UE_DEFINE_GAMEPLAY_TAG(State_Exploration, "State.Exploration");
 	UE_DEFINE_GAMEPLAY_TAG(State_Combat_InCombat, "State.Combat.InCombat");
@@ -36,19 +39,51 @@ namespace CombatTags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_HitReact_ParrySuccess, "Event.Combat.HitReact.ParrySuccess");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_HitReact_GuardBreak, "Event.Combat.HitReact.GuardBreak");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_ReactionFinished, "Event.Combat.ReactionFinished");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_WeaponCommit, "Event.Combat.WeaponCommit");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Combat_Fire, "Event.Combat.Fire");
 	
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Attack, "Ability.Type.Attack");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Block, "Ability.Type.Block");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Evasion, "Ability.Type.Evasion");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Finisher, "Ability.Type.Finisher");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_HitReaction, "Ability.Type.HitReaction");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Equip, "Ability.Type.Equip");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Type_Aim, "Ability.Type.Aim");
 	
 	UE_DEFINE_GAMEPLAY_TAG(Data_Damage, "Data.Damage");
 	UE_DEFINE_GAMEPLAY_TAG(Data_StaminaConsumed, "Data.StaminaConsumed");
 	
-	UE_DEFINE_GAMEPLAY_TAG(AI_State_Patrol, "AI.State.Patrol");
-	UE_DEFINE_GAMEPLAY_TAG(AI_State_Leashing, "AI.State.Leashing");
-	UE_DEFINE_GAMEPLAY_TAG(AI_State_Chase, "AI.State.Chase");
-	UE_DEFINE_GAMEPLAY_TAG(AI_State_MeleeCombat, "AI.State.MeleeCombat");
-	UE_DEFINE_GAMEPLAY_TAG(AI_State_RangedCombat, "AI.State.RangedCombat");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Type_Melee, "Enemy.Type.Melee");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Type_Ranged, "Enemy.Type.Ranged");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Type_Mixed, "Enemy.Type.Mixed");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Archetype_Brawler, "Enemy.Archetype.Brawler");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Archetype_Kicker, "Enemy.Archetype.Kicker");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Archetype_Defensive, "Enemy.Archetype.Defensive");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Archetype_Heavy, "Enemy.Archetype.Heavy");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Mastery_Novice, "Enemy.Mastery.Novice");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Mastery_Intermediate, "Enemy.Mastery.Intermediate");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Mastery_Advanced, "Enemy.Mastery.Advanced");
+	UE_DEFINE_GAMEPLAY_TAG(Enemy_Mastery_Master, "Enemy.Mastery.Master");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee, "Weapon.Type.Melee");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Ranged, "Weapon.Type.Ranged");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Unarmed, "Weapon.Type.Melee.Unarmed");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Knife, "Weapon.Type.Melee.Knife");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Spear, "Weapon.Type.Melee.Spear");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Axe, "Weapon.Type.Melee.Axe");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Axe_SingleAxe, "Weapon.Type.Melee.Axe.SingleAxe");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Axe_DualAxe, "Weapon.Type.Melee.Axe.DualAxe");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Sword, "Weapon.Type.Melee.Sword");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Sword_SingleSword, "Weapon.Type.Melee.Sword.SingleSword");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Sword_SwordAndShield, "Weapon.Type.Melee.Sword.SwordAndShield");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Sword_HeavySword, "Weapon.Type.Melee.Sword.HeavySword");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Melee_Sword_Katana, "Weapon.Type.Melee.Sword.Katana");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Ranged_Pistol, "Weapon.Type.Ranged.Pistol");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Ranged_Rifle, "Weapon.Type.Ranged.Rifle");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Ranged_Shotgun, "Weapon.Type.Ranged.Shotgun");
+	UE_DEFINE_GAMEPLAY_TAG(Weapon_Type_Ranged_Sniper, "Weapon.Type.Ranged.Sniper");
+
 }

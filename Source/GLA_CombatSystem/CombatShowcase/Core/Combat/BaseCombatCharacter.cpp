@@ -12,10 +12,12 @@
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "CombatShowcase/Core/HUD/StatWidgetBase.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/CombatStatsComponent.h"
+#include "Components/CombatComboComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/WeaponComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Perception/AISense_Sight.h"
+#include "Subsystem/CombatDirectorSubsystem.h"
 
 // Sets default values
 ABaseCombatCharacter::ABaseCombatCharacter()
@@ -36,7 +38,8 @@ ABaseCombatCharacter::ABaseCombatCharacter()
 	AttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("AttributeSet"));
 
 	FeedbackComponent = CreateDefaultSubobject<UCombatFeedbackComponent>(TEXT("FeedbackComponent"));
-	CombatStatsComponent = CreateDefaultSubobject<UCombatStatsComponent>(TEXT("CombatStatsComponent"));
+	CombatComboComponent = CreateDefaultSubobject<UCombatComboComponent>(TEXT("UCombatComboComponent"));
+	WeaponComponent = CreateDefaultSubobject<UWeaponComponent>(TEXT("WeaponComponent"));
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
 	ContextualAnimSceneActorComponent = CreateDefaultSubobject<UContextualAnimSceneActorComponent>(
 		TEXT("ContextualAnimSceneActorComponent"));
@@ -169,8 +172,17 @@ void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmou
 	}
 	if (DamageAmount > 0.f)
 	{
-		GetCombatStatsComponent()->RegisterDamageTaken();
-		GetCombatStatsComponent()->ResetCombo();
+		// The director reads the player's losses as pressure and eases the attackers off when it gets high.
+		if (IsPlayerControlled() && AttributeSet && AttributeSet->GetMaxHealth() > 0.f)
+		{
+			if (UCombatDirectorSubsystem* Director = GetWorld()->GetSubsystem<UCombatDirectorSubsystem>())
+			{
+				Director->NotifyTargetDamaged(this, DamageAmount / AttributeSet->GetMaxHealth());
+			}
+		}
+
+		GetCombatComboComponent()->RegisterDamageTaken();
+		GetCombatComboComponent()->ResetCombo();
 
 		FGameplayTagContainer AttackTags;
 		AttackTags.AddTag(CombatTags::Ability_Type_Attack);
@@ -180,6 +192,12 @@ void ABaseCombatCharacter::HandleHealthChanged(float NewHealth, float DamageAmou
 
 void ABaseCombatCharacter::TriggerDeath()
 {
+	// A dead enemy must not keep an attack slot. No cooldown: it isn't coming back.
+	if (UCombatDirectorSubsystem* Director = GetWorld()->GetSubsystem<UCombatDirectorSubsystem>())
+	{
+		Director->ReleaseToken(this, false);
+	}
+
 	GetCharacterMovement()->DisableMovement();
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -198,6 +216,14 @@ void ABaseCombatCharacter::TriggerDeath()
 	}
 
 	AbilitySystemComponent->CancelAllAbilities();
+}
+
+void ABaseCombatCharacter::SetAiming(bool bNewAiming)
+{
+	if (bAiming == bNewAiming) return;
+	bAiming = bNewAiming;
+	if (!bAiming) AimPitchDegrees = 0.f; // the next aim starts level
+	OnAimingChanged.Broadcast(bAiming);
 }
 
 float ABaseCombatCharacter::GetHealthPercent() const

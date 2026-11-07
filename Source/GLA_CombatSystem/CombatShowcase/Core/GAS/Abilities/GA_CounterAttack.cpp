@@ -5,7 +5,7 @@
 
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "CombatShowcase/Core/Combat/Characters/Player/PlayerCombatCharacter.h"
-#include "CombatShowcase/Core/Combat/Components/CombatStatsComponent.h"
+#include "CombatShowcase/Core/Combat/Components/CombatComboComponent.h"
 #include "CombatShowcase/Core/GAS/CombatGameplayTags.h"
 #include "CombatShowcase/Core/GAS/AbilityTasks/AbilityTask_MultiBoneHitTrace.h"
 
@@ -32,7 +32,7 @@ void UGA_CounterAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		return;
 	}
 	ABaseCombatCharacter* Avatar = Cast<ABaseCombatCharacter>(GetAvatarActorFromActorInfo());
-	UCombatStatsComponent* Stats = Avatar ? Avatar->GetCombatStatsComponent() : nullptr;
+	UCombatComboComponent* Stats = Avatar ? Avatar->GetCombatComboComponent() : nullptr;
 	
 	const UDataTable* Table = Stats ? Stats->GetCounterStrikeDataTable() : nullptr;
 	const TArray<FName> RowNames = Table ? Table->GetRowNames() : TArray<FName>();
@@ -78,7 +78,8 @@ void UGA_CounterAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	Payload.ImpactFeel = Row->ImpactFeel;
 	Payload.HPEffectClass = Stats->GetDamageEffectClass();
 	Payload.STAEffectClass = Stats->GetStaminaDamageEffectClass();
-
+	Payload.StrikeTag = Row->StrikeTag;
+	
 	UAbilityTask_MultiBoneHitTrace* HitboxTask = UAbilityTask_MultiBoneHitTrace::CreateMultiBoneHitTrace(
 		this, Row->Hitboxes, Payload);
 	HitboxTask->OnMultiHitDetected.AddDynamic(this, &UGA_CounterAttack::HandleHitDetected);
@@ -91,7 +92,7 @@ void UGA_CounterAttack::HandleHitDetected(AActor* HitActor, EHitOutcome Outcome)
 
 	if (APlayerCombatCharacter* AttackerChar = Cast<APlayerCombatCharacter>(GetAvatarActorFromActorInfo()))
 	{
-		AttackerChar->GetCombatStatsComponent()->RegisterHitLanded();
+		AttackerChar->GetCombatComboComponent()->RegisterHitLanded();
 	}
 }
 

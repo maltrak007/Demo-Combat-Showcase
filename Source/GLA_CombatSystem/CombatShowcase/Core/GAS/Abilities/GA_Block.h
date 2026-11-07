@@ -27,10 +27,13 @@ protected:
 	
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	
+	// Fallbacks. The guard montages come from the weapon in use (Item|Guard on the weapon asset), then from the
+	// baseline weapon. These two play only when neither names one, so existing Blueprints keep working.
 	UPROPERTY(EditDefaultsOnly, Category = "Block")
 	UAnimMontage* BlockToUpMontage;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Block")
-	UAnimMontage* BlockToDownMontage;	
+	UAnimMontage* BlockToDownMontage;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Block")
 	float BlockStaminaCost = 10.f;
@@ -43,6 +46,10 @@ protected:
 	UFUNCTION()
 	void HandleReactionFinished(FGameplayEventData Payload);
 	
+	// The weapon in use, then the baseline, then this ability's own pair. Read each time a guard montage starts,
+	// so a weapon change in the middle of a guard takes effect at the next direction change.
+	UAnimMontage* ResolveGuardMontage(bool bUp) const;
+
 	void PlayGuardMontage(bool bUp);
 	void StartGuardMontage(bool bUp, FName StartSection = NAME_None);
 	

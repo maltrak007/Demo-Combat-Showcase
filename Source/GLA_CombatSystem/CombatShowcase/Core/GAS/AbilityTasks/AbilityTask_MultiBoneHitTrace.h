@@ -9,6 +9,8 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FMultiBoneHitTraceDelegate, AActor*, HitActor, EHitOutcome, Outcome);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHitWindowClosedDelegate, bool, bHitAnything);
+
 /**
  * 
  */
@@ -20,6 +22,9 @@ class GLA_COMBATSYSTEM_API UAbilityTask_MultiBoneHitTrace : public UAbilityTask
 public:
 	UPROPERTY(BlueprintAssignable)
 	FMultiBoneHitTraceDelegate OnMultiHitDetected;
+
+	UPROPERTY(BlueprintAssignable)
+	FHitWindowClosedDelegate OnWindowClosed;
 
 	UFUNCTION(BlueprintCallable,
 		meta = (HidePin = "OwningAbility", DefaultToSelf = "OwningAbility", BlueprintInternalUseOnly = "true"))
@@ -34,9 +39,10 @@ public:
 protected:
 	TArray<FCombatHitboxDef> Hitboxes;
 	FCombatStrikePayload Payload;
-	
+
 	bool bWindowOpen = false;
-	
+	bool bAnyHitThisWindow = false;
+
 	TMap<FName, FVector> LastBonePositions;
 	TMap<uint16, TSet<TWeakObjectPtr<AActor>>> HitGroupsConsumed;
 	FDelegateHandle OpenHandle, CloseHandle;
